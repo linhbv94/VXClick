@@ -10,13 +10,13 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::compressor::{compress_macro_events, WindowRect};
-use crate::ledger::{ActiveInputLedger, LedgerInput};
+use crate::ledger::ActiveInputLedger;
 use crate::platform::{
     check_accessibility_permission, get_screen_topology, request_accessibility_permission,
     EventCapture, EventInjector, GlobalHotkeyMonitor, GlobalHotkeyTrigger,
 };
 use crate::types::{
-    EmergencyStoppedPayload, MacroAction, MacroEvent, MacroStats, MacroTimeline,
+    EmergencyStoppedPayload, MacroAction, MacroStats, MacroTimeline,
     PermissionStatus, PlaybackConfig, PlaybackProgressPayload, RecordingProgressPayload,
     SettingsState, StateChangedPayload, SystemState,
 };

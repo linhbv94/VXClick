@@ -82,6 +82,10 @@ impl WindowsGlobalHotkeyMonitor {
         // Dummy: Chưa kích hoạt hook toàn cục trên Windows
         Ok(Self { _dummy: () })
     }
+
+    pub fn stop(self) {
+        // Dummy: No-op trên Windows
+    }
 }
 
 // Type aliases để engine/mod.rs sử dụng thống nhất giữa macOS và Windows
@@ -113,6 +117,6 @@ mod tests {
         injector.flush_hardware_state(&mut ledger, last_pos);
 
         let monitor = WindowsGlobalHotkeyMonitor::start(|_trig| {}).unwrap();
-        drop(monitor);
+        monitor.stop();
     }
 }
