@@ -58,8 +58,10 @@ export const PlaybackMiniBar: React.FC<PlaybackMiniBarProps> = ({
     );
   }
 
-  // Xác định số vòng lặp và tiến độ
-  const currentLoop = progress && progress.loop > 0 ? progress.loop : 1;
+  // Xác định số vòng lặp và tiến độ (QA06)
+  // Phân biệt rõ vòng đang chạy (currentRunningLoop: #1, #2...) và số vòng đã hoàn tất (completedLoops: 0, 1...)
+  const currentRunningLoop = progress && progress.loop > 0 ? progress.loop : 1;
+  const completedLoops = progress && progress.loop > 0 ? progress.loop - 1 : 0;
   const totalLoops =
     progress && progress.total > 0
       ? progress.total
@@ -75,7 +77,7 @@ export const PlaybackMiniBar: React.FC<PlaybackMiniBarProps> = ({
           100,
           Math.max(
             0,
-            (((currentLoop - 1) + currentPct / 100) / totalLoops) * 100
+            ((completedLoops + currentPct / 100) / totalLoops) * 100
           )
         )
       : 0;
@@ -92,9 +94,9 @@ export const PlaybackMiniBar: React.FC<PlaybackMiniBarProps> = ({
             <InfinityIcon className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400 shrink-0 animate-pulse" />
             <span className="font-medium text-slate-700 dark:text-slate-300 truncate">
               {t('status_continuous_loop', language)}
-              {currentLoop > 0 && (
+              {currentRunningLoop > 0 && (
                 <span className="font-mono ml-1 text-slate-400 dark:text-slate-500 font-semibold">
-                  #{currentLoop}
+                  #{currentRunningLoop}
                 </span>
               )}
             </span>
@@ -126,7 +128,7 @@ export const PlaybackMiniBar: React.FC<PlaybackMiniBarProps> = ({
             <span className="text-slate-700 dark:text-slate-300 truncate font-medium">
               {t('status_loop_progress', language)}{' '}
               <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                {currentLoop}
+                {completedLoops}
               </span>{' '}
               /{' '}
               <span className="font-mono font-bold text-slate-600 dark:text-slate-400">

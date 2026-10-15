@@ -8,6 +8,7 @@ pub mod platform;
 pub mod types;
 
 use engine::MacroEngine;
+use tauri::Manager;
 use types::{MacroStats, PermissionStatus, PlaybackConfig, SettingsState};
 
 pub struct AppState {
@@ -72,7 +73,8 @@ fn request_system_permissions(state: tauri::State<'_, AppState>) -> Result<(), S
 }
 
 #[tauri::command]
-fn restart_app(app: tauri::AppHandle) {
+fn restart_app(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
+    state.engine.shutdown();
     app.restart();
 }
 
@@ -168,6 +170,14 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if matches!(
+                event,
+                tauri::WindowEvent::CloseRequested { .. } | tauri::WindowEvent::Destroyed
+            ) {
+                if let Some(state) = window.try_state::<AppState>() {
+                    state.engine.shutdown();
+                }
+            }
             #[cfg(target_os = "macos")]
             {
                 if matches!(
@@ -183,6 +193,13 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running vxclick application");
+        .build(tauri::generate_context!())
+        .expect("error while running vxclick application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                if let Some(state) = app_handle.try_state::<AppState>() {
+                    state.engine.shutdown();
+                }
+            }
+        });
 }

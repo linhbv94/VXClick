@@ -1,7 +1,7 @@
 // Nền tảng macOS — Bộ Thu thập CGEventTap & Bộ Bắn Sự kiện CGEventPost
 // Tuân thủ nghiêm ngặt đặc tả kiến trúc: docs/spec/00_system_overview.md và docs/spec/04_api_data.md
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use core_foundation::base::TCFType;
@@ -90,10 +90,35 @@ pub fn get_screen_topology() -> ScreenTopology {
 // 1. BỘ THU NẠP SỰ KIỆN NATIVE (CAPTURE ENGINE)
 // ==========================================
 
+// Helper kiểm tra phím tắt toàn cục thống nhất theo Spec (QA03)
+pub fn is_toggle_record_hotkey(key_code: u16, modifiers: u8) -> bool {
+    // ⌥ + ⇧ + ⌘ + R (key_code 0x0F, Command + Option/Alt + Shift, không có Control)
+    key_code == 0x0F
+        && (modifiers & MOD_CMD != 0)
+        && (modifiers & MOD_ALT != 0)
+        && (modifiers & MOD_SHIFT != 0)
+        && (modifiers & MOD_CTRL == 0)
+}
+
+pub fn is_toggle_playback_hotkey(key_code: u16, modifiers: u8) -> bool {
+    // ⌥ + ⇧ + ⌘ + P (key_code 0x23, Command + Option/Alt + Shift, không có Control)
+    key_code == 0x23
+        && (modifiers & MOD_CMD != 0)
+        && (modifiers & MOD_ALT != 0)
+        && (modifiers & MOD_SHIFT != 0)
+        && (modifiers & MOD_CTRL == 0)
+}
+
+pub fn is_emergency_stop_hotkey(key_code: u16) -> bool {
+    // ESC (key_code 0x35)
+    key_code == 0x35
+}
+
 pub struct MacEventCapture {
     run_loop_ref: Arc<AtomicUsize>,
     thread_handle: Option<std::thread::JoinHandle<()>>,
     event_receiver: crossbeam_channel::Receiver<MacroEvent>,
+    overflow_flag: Arc<AtomicBool>,
 }
 
 impl MacEventCapture {
@@ -105,6 +130,8 @@ impl MacEventCapture {
         let (tx, rx) = crossbeam_channel::bounded::<MacroEvent>(10_000);
         let run_loop_holder = Arc::new(AtomicUsize::new(0));
         let run_loop_holder_clone = run_loop_holder.clone();
+        let overflow_flag = Arc::new(AtomicBool::new(false));
+        let overflow_flag_cb = overflow_flag.clone();
 
         let (init_tx, init_rx) = std::sync::mpsc::channel::<Result<(), String>>();
 
@@ -221,8 +248,8 @@ impl MacEventCapture {
                         }
                         CGEventType::KeyDown => {
                             let key_code = cg_event.get_integer_value_field(EventField::KEYBOARD_EVENT_KEYCODE) as u16;
-                            // Loại trừ phím F9 hoặc Cmd+Opt+R nếu dùng để dừng ghi
-                            if key_code == 0x65 || (key_code == 0x0F && (modifiers & MOD_CMD != 0) && (modifiers & MOD_ALT != 0)) {
+                            // Loại trừ phím tắt điều khiển ⌥ + ⇧ + ⌘ + R (QA03)
+                            if is_toggle_record_hotkey(key_code, modifiers) {
                                 None
                             } else {
                                 Some(MacroAction::KeyDown { key_code, modifiers })
@@ -230,7 +257,7 @@ impl MacEventCapture {
                         }
                         CGEventType::KeyUp => {
                             let key_code = cg_event.get_integer_value_field(EventField::KEYBOARD_EVENT_KEYCODE) as u16;
-                            if key_code == 0x65 || (key_code == 0x0F && (modifiers & MOD_CMD != 0) && (modifiers & MOD_ALT != 0)) {
+                            if is_toggle_record_hotkey(key_code, modifiers) {
                                 None
                             } else {
                                 Some(MacroAction::KeyUp { key_code, modifiers })
@@ -257,10 +284,13 @@ impl MacEventCapture {
                     };
 
                     if let Some(act) = action {
-                        let _ = tx_clone.try_send(MacroEvent {
+                        if let Err(_) = tx_clone.try_send(MacroEvent {
                             timestamp_us: elapsed_us,
                             action: act,
-                        });
+                        }) {
+                            // QA02: Phát hiện hàng đợi đầy (>10.000 sự kiện) -> Đánh dấu overflow fail-closed
+                            overflow_flag_cb.store(true, Ordering::SeqCst);
+                        }
                     }
 
                     None
@@ -289,17 +319,22 @@ impl MacEventCapture {
                 run_loop_ref: run_loop_holder,
                 thread_handle: Some(thread_handle),
                 event_receiver: rx,
+                overflow_flag,
             }),
             Ok(Err(e)) => Err(e),
             Err(_) => Err("Hết thời gian chờ khởi động Event Tap.".to_string()),
         }
     }
 
+    pub fn is_overflowed(&self) -> bool {
+        self.overflow_flag.load(Ordering::SeqCst)
+    }
+
     pub fn get_collected_count(&self) -> usize {
         self.event_receiver.len()
     }
 
-    pub fn stop(mut self) -> Vec<MacroEvent> {
+    pub fn stop(mut self) -> (Vec<MacroEvent>, bool) {
         let rl_ptr = self.run_loop_ref.load(Ordering::SeqCst);
         if rl_ptr != 0 {
             unsafe {
@@ -315,7 +350,8 @@ impl MacEventCapture {
         while let Ok(ev) = self.event_receiver.try_recv() {
             events.push(ev);
         }
-        events
+        let overflowed = self.overflow_flag.load(Ordering::SeqCst);
+        (events, overflowed)
     }
 }
 
@@ -531,6 +567,7 @@ impl MacGlobalHotkeyMonitor {
         let run_loop_holder_clone = run_loop_holder.clone();
 
         let cb_arc = Arc::new(callback);
+        let (init_tx, init_rx) = std::sync::mpsc::channel::<Result<(), String>>();
 
         let thread_handle = std::thread::spawn(move || {
             let current_rl = CFRunLoop::get_current();
@@ -549,29 +586,44 @@ impl MacGlobalHotkeyMonitor {
                         return None;
                     }
 
+                    // QA03: LOẠI TRỪ 100% SYNTHETIC EVENTS TRƯỚC MỌI CONTROL SHORTCUT
+                    // Tuyệt đối không cho phép macro playback tự kích hoạt bất kỳ hotkey nào!
                     let marker = cg_event.get_integer_value_field(EventField::EVENT_SOURCE_USER_DATA);
-                    let key_code = cg_event.get_integer_value_field(EventField::KEYBOARD_EVENT_KEYCODE) as u16;
-                    let flags = cg_event.get_flags();
-
-                    let is_cmd = flags.contains(CGEventFlags::CGEventFlagCommand);
-                    let is_alt = flags.contains(CGEventFlags::CGEventFlagAlternate);
-
-                    // 1. Phím ngắt khẩn cấp ESC (0x35) — CHỈ CHẤP NHẬN PHÍM VẬT LÝ THẬT
-                    if key_code == 0x35 {
-                        if marker != VXCLICK_SYNTHETIC_MARKER {
-                            cb(GlobalHotkeyTrigger::EmergencyStop);
-                        }
+                    if marker == VXCLICK_SYNTHETIC_MARKER {
                         return None;
                     }
 
-                    // 2. Phím F9 (0x65) hoặc Cmd+Opt+R (0x0F) -> Ghi / Dừng ghi
-                    if key_code == 0x65 || (key_code == 0x0F && is_cmd && is_alt) {
+                    let key_code = cg_event.get_integer_value_field(EventField::KEYBOARD_EVENT_KEYCODE) as u16;
+                    let flags = cg_event.get_flags();
+
+                    let mut modifiers = 0u8;
+                    if flags.contains(CGEventFlags::CGEventFlagShift) {
+                        modifiers |= MOD_SHIFT;
+                    }
+                    if flags.contains(CGEventFlags::CGEventFlagControl) {
+                        modifiers |= MOD_CTRL;
+                    }
+                    if flags.contains(CGEventFlags::CGEventFlagAlternate) {
+                        modifiers |= MOD_ALT;
+                    }
+                    if flags.contains(CGEventFlags::CGEventFlagCommand) {
+                        modifiers |= MOD_CMD;
+                    }
+
+                    // 1. Phím ngắt khẩn cấp ESC (0x35) — CHỈ CHẤP NHẬN PHÍM VẬT LÝ THẬT
+                    if is_emergency_stop_hotkey(key_code) {
+                        cb(GlobalHotkeyTrigger::EmergencyStop);
+                        return None;
+                    }
+
+                    // 2. Phím ⌥ + ⇧ + ⌘ + R (0x0F) -> Ghi / Dừng ghi (QA03)
+                    if is_toggle_record_hotkey(key_code, modifiers) {
                         cb(GlobalHotkeyTrigger::ToggleRecord);
                         return None;
                     }
 
-                    // 3. Phím F8 (0x64) hoặc Cmd+Opt+P (0x23) -> Phát lại / Dừng phát
-                    if key_code == 0x64 || (key_code == 0x23 && is_cmd && is_alt) {
+                    // 3. Phím ⌥ + ⇧ + ⌘ + P (0x23) -> Phát lại / Dừng phát (QA03)
+                    if is_toggle_playback_hotkey(key_code, modifiers) {
                         cb(GlobalHotkeyTrigger::TogglePlayback);
                         return None;
                     }
@@ -580,21 +632,31 @@ impl MacGlobalHotkeyMonitor {
                 },
             );
 
-            if let Ok(tap) = tap_result {
-                unsafe {
-                    if let Ok(source) = tap.mach_port.create_runloop_source(0) {
-                        current_rl.add_source(&source, kCFRunLoopCommonModes);
-                        tap.enable();
-                        CFRunLoop::run_current();
+            match tap_result {
+                Ok(tap) => {
+                    let _ = init_tx.send(Ok(()));
+                    unsafe {
+                        if let Ok(source) = tap.mach_port.create_runloop_source(0) {
+                            current_rl.add_source(&source, kCFRunLoopCommonModes);
+                            tap.enable();
+                            CFRunLoop::run_current();
+                        }
                     }
+                }
+                Err(_) => {
+                    let _ = init_tx.send(Err("Không thể khởi tạo CGEventTap cho phím tắt toàn cục.".to_string()));
                 }
             }
         });
 
-        Ok(Self {
-            run_loop_ref: run_loop_holder,
-            thread_handle: Some(thread_handle),
-        })
+        match init_rx.recv_timeout(std::time::Duration::from_millis(1500)) {
+            Ok(Ok(())) => Ok(Self {
+                run_loop_ref: run_loop_holder,
+                thread_handle: Some(thread_handle),
+            }),
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err("Hết thời gian chờ đăng ký phím tắt toàn cục.".to_string()),
+        }
     }
 
     pub fn stop(mut self) {
@@ -614,3 +676,54 @@ impl MacGlobalHotkeyMonitor {
 pub type EventCapture = MacEventCapture;
 pub type EventInjector = MacEventInjector;
 pub type GlobalHotkeyMonitor = MacGlobalHotkeyMonitor;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hotkey_matcher_strict_contract() {
+        // QA03: Khớp chính xác hợp đồng ⌥ + ⇧ + ⌘ + R và ⌥ + ⇧ + ⌘ + P
+        let valid_mods = MOD_CMD | MOD_ALT | MOD_SHIFT;
+        assert!(is_toggle_record_hotkey(0x0F, valid_mods));
+        assert!(is_toggle_playback_hotkey(0x23, valid_mods));
+
+        // Thiếu Shift -> BẮT BUỘC trả về false
+        let missing_shift = MOD_CMD | MOD_ALT;
+        assert!(!is_toggle_record_hotkey(0x0F, missing_shift));
+        assert!(!is_toggle_playback_hotkey(0x23, missing_shift));
+
+        // Kèm Control -> BẮT BUỘC trả về false để tránh xung đột app khác
+        let extra_ctrl = valid_mods | MOD_CTRL;
+        assert!(!is_toggle_record_hotkey(0x0F, extra_ctrl));
+        assert!(!is_toggle_playback_hotkey(0x23, extra_ctrl));
+
+        // Các alias cũ F8 (0x64), F9 (0x65) -> Đã gỡ bỏ, BẮT BUỘC trả về false
+        assert!(!is_toggle_record_hotkey(0x65, 0));
+        assert!(!is_toggle_playback_hotkey(0x64, 0));
+
+        // ESC chỉ bắt key code 0x35
+        assert!(is_emergency_stop_hotkey(0x35));
+        assert!(!is_emergency_stop_hotkey(0x0F));
+    }
+
+    #[test]
+    fn test_queue_overflow_fail_closed_logic() {
+        // QA02: Kiểm chứng cơ chế fail-closed khi kênh try_send bị đầy
+        let (tx, rx) = crossbeam_channel::bounded::<MacroEvent>(3);
+        let overflow_flag = Arc::new(AtomicBool::new(false));
+
+        for i in 0..5 {
+            let ev = MacroEvent {
+                timestamp_us: i * 1000,
+                action: MacroAction::MouseMove { x: i as i32, y: i as i32 },
+            };
+            if let Err(_) = tx.try_send(ev) {
+                overflow_flag.store(true, Ordering::SeqCst);
+            }
+        }
+
+        assert!(overflow_flag.load(Ordering::SeqCst), "Queue overflow must be detected");
+        assert_eq!(rx.len(), 3);
+    }
+}

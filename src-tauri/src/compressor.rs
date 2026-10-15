@@ -34,43 +34,94 @@ pub fn compress_macro_events(
     // BƯỚC 1: LỌC TỰ LOẠI TRỪ (SELF-EXCLUSION)
     // ==========================================
     // Loại bỏ các tương tác với chính thanh công cụ VXClick (nút Stop, Pin, kéo bar)
+    // BẢO TOÀN NGUYÊN VẸN CẶP MOUSEDOWN / MOUSEUP (QA01):
+    // - Down ngoài widget, Up trên widget: Giữ cả hai (drag ngoài kết thúc trên widget).
+    // - Down trên widget, Up ngoài widget: Bỏ cả hai (kéo từ widget ra ngoài).
+    use std::collections::HashMap;
+    use crate::types::MouseBtn;
+
     let mut step1_events = Vec::with_capacity(raw_events.len());
+    let mut button_started_inside: HashMap<MouseBtn, bool> = HashMap::new();
 
     for ev in raw_events {
-        let is_self_interaction = match &ev.action {
-            MacroAction::MouseDown { x, y, .. } | MacroAction::MouseUp { x, y, .. } => {
-                if let Some(bounds) = window_bounds {
+        match &ev.action {
+            MacroAction::MouseDown { button, x, y } => {
+                let is_inside = if let Some(bounds) = window_bounds {
                     bounds.contains_point(*x, *y, 8.0)
                 } else {
                     false
+                };
+                button_started_inside.insert(*button, is_inside);
+                if !is_inside {
+                    step1_events.push(ev.clone());
                 }
             }
-            _ => false,
-        };
-
-        if !is_self_interaction {
-            step1_events.push(ev.clone());
+            MacroAction::MouseUp { button, x, y } => {
+                let started_inside = button_started_inside.remove(button);
+                match started_inside {
+                    Some(true) => {
+                        // Thao tác bắt đầu trên widget -> Bỏ trọn vẹn cả MouseUp
+                    }
+                    Some(false) => {
+                        // Thao tác bắt đầu ngoài widget -> BẮT BUỘC giữ MouseUp dù tọa độ rơi vào widget
+                        step1_events.push(ev.clone());
+                    }
+                    None => {
+                        // MouseUp mồ côi (không có MouseDown trước đó trong bản ghi)
+                        let is_inside = if let Some(bounds) = window_bounds {
+                            bounds.contains_point(*x, *y, 8.0)
+                        } else {
+                            false
+                        };
+                        if !is_inside {
+                            // Chỉ bỏ qua nếu nằm trên widget, hoặc bỏ qua để tránh unbalance
+                        }
+                    }
+                }
+            }
+            _ => {
+                step1_events.push(ev.clone());
+            }
         }
     }
 
-    // Nếu cú click cuối cùng trước khi bấm Stop vẫn còn sót lại ở đuôi,
-    // ta kiểm tra và tỉa bỏ cú click cuối cùng nếu nó xảy ra gần thời điểm kết thúc
-    while let Some(last) = step1_events.last() {
-        if matches!(last.action, MacroAction::MouseDown { .. } | MacroAction::MouseUp { .. }) {
-            // Kiểm tra xem cú click này có nằm trong window_bounds không
-            if let Some(bounds) = window_bounds {
-                let (x, y) = match last.action {
-                    MacroAction::MouseDown { x, y, .. } | MacroAction::MouseUp { x, y, .. } => (x, y),
-                    _ => (0, 0),
-                };
-                if bounds.contains_point(x, y, 16.0) {
-                    step1_events.pop();
-                    continue;
+    // Tỉa bỏ cú click vào nút Stop ở cuối bản ghi nếu còn sót lại.
+    // BẢO VỆ CẶP (QA01): Chỉ tỉa khi cả MouseUp và MouseDown tương ứng ĐỀU nằm trên widget!
+    if let Some(bounds) = window_bounds {
+        while let Some(last) = step1_events.last() {
+            match &last.action {
+                MacroAction::MouseUp { button, x, y } => {
+                    if bounds.contains_point(*x, *y, 16.0) {
+                        let target_btn = *button;
+                        let mut matching_down_idx = None;
+                        for i in (0..step1_events.len() - 1).rev() {
+                            match &step1_events[i].action {
+                                MacroAction::MouseDown { button: b, x: dx, y: dy } if *b == target_btn => {
+                                    if bounds.contains_point(*dx, *dy, 16.0) {
+                                        matching_down_idx = Some(i);
+                                    }
+                                    break;
+                                }
+                                MacroAction::MouseUp { button: b, .. } if *b == target_btn => {
+                                    break;
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        if let Some(down_idx) = matching_down_idx {
+                            step1_events.truncate(down_idx);
+                            continue;
+                        }
+                    }
+                    break;
                 }
+                MacroAction::MouseDown { .. } => {
+                    // MouseDown lẻ loi ở cuối không có MouseUp -> tỉa bỏ để tránh kẹt chuột
+                    step1_events.pop();
+                }
+                _ => break,
             }
-            break;
-        } else {
-            break;
         }
     }
 
@@ -350,5 +401,151 @@ mod tests {
         let compressed = compress_macro_events(&raw, None);
         // All 10 drag points + Down + Up should be preserved because interval is 10ms >= 8.3ms
         assert_eq!(compressed.len(), 12);
+    }
+
+    #[test]
+    fn test_external_drag_release_on_widget_retains_balanced_pair() {
+        let input = vec![
+            MacroEvent {
+                timestamp_us: 0,
+                action: MacroAction::MouseDown {
+                    button: MouseBtn::Left,
+                    x: 10,
+                    y: 10,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 1_000_000,
+                action: MacroAction::MouseUp {
+                    button: MouseBtn::Left,
+                    x: 150,
+                    y: 150,
+                },
+            },
+        ];
+        let output = compress_macro_events(
+            &input,
+            Some(WindowRect {
+                min_x: 100.0,
+                min_y: 100.0,
+                max_x: 200.0,
+                max_y: 200.0,
+            }),
+        );
+        let balance: i32 = output
+            .iter()
+            .map(|e| match e.action {
+                MacroAction::MouseDown { .. } => 1,
+                MacroAction::MouseUp { .. } => -1,
+                _ => 0,
+            })
+            .sum();
+        assert_eq!(balance, 0, "external drag must not lose release");
+        assert_eq!(output.len(), 2);
+    }
+
+    #[test]
+    fn test_widget_drag_release_outside_does_not_emit_orphan_up() {
+        let input = vec![
+            MacroEvent {
+                timestamp_us: 0,
+                action: MacroAction::MouseDown {
+                    button: MouseBtn::Left,
+                    x: 150,
+                    y: 150,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 1_000_000,
+                action: MacroAction::MouseUp {
+                    button: MouseBtn::Left,
+                    x: 10,
+                    y: 10,
+                },
+            },
+        ];
+        let output = compress_macro_events(
+            &input,
+            Some(WindowRect {
+                min_x: 100.0,
+                min_y: 100.0,
+                max_x: 200.0,
+                max_y: 200.0,
+            }),
+        );
+        let balance: i32 = output
+            .iter()
+            .map(|e| match e.action {
+                MacroAction::MouseDown { .. } => 1,
+                MacroAction::MouseUp { .. } => -1,
+                _ => 0,
+            })
+            .sum();
+        assert_eq!(balance, 0, "widget drag must not leave orphan release");
+        assert_eq!(output.len(), 0);
+    }
+
+    #[test]
+    fn test_drag_crossing_boundaries_multiple_buttons() {
+        let bounds = WindowRect {
+            min_x: 100.0,
+            min_y: 100.0,
+            max_x: 200.0,
+            max_y: 200.0,
+        };
+        // Left button: starts outside (10, 10), ends inside (150, 150) -> KEEP
+        // Right button: starts inside (150, 150), ends outside (10, 10) -> DROP
+        let input = vec![
+            MacroEvent {
+                timestamp_us: 0,
+                action: MacroAction::MouseDown {
+                    button: MouseBtn::Left,
+                    x: 10,
+                    y: 10,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 100_000,
+                action: MacroAction::MouseDown {
+                    button: MouseBtn::Right,
+                    x: 150,
+                    y: 150,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 200_000,
+                action: MacroAction::MouseUp {
+                    button: MouseBtn::Right,
+                    x: 10,
+                    y: 10,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 300_000,
+                action: MacroAction::MouseUp {
+                    button: MouseBtn::Left,
+                    x: 150,
+                    y: 150,
+                },
+            },
+        ];
+        let output = compress_macro_events(&input, Some(bounds));
+        assert_eq!(output.len(), 2);
+        assert_eq!(
+            output[0].action,
+            MacroAction::MouseDown {
+                button: MouseBtn::Left,
+                x: 10,
+                y: 10
+            }
+        );
+        assert_eq!(
+            output[1].action,
+            MacroAction::MouseUp {
+                button: MouseBtn::Left,
+                x: 150,
+                y: 150
+            }
+        );
     }
 }

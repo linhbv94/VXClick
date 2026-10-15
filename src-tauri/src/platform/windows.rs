@@ -39,9 +39,12 @@ impl WindowsEventCapture {
         Ok(Self { _dummy: () })
     }
 
-    pub fn stop(self) -> Vec<MacroEvent> {
+    pub fn stop(self) -> (Vec<MacroEvent>, bool) {
         // Dummy: Trả về danh sách rỗng vì chưa gắn hook tầng thấp trên Windows
-        Vec::new()
+        (Vec::new(), false)
+    }
+    pub fn is_overflowed(&self) -> bool {
+        false
     }
 }
 
@@ -98,8 +101,9 @@ mod tests {
         assert_eq!(topology.virtual_height, 1080);
 
         let capture = WindowsEventCapture::start().unwrap();
-        let events = capture.stop();
+        let (events, overflowed) = capture.stop();
         assert!(events.is_empty());
+        assert!(!overflowed);
 
         let injector = WindowsEventInjector::new();
         let mut ledger = ActiveInputLedger::new();

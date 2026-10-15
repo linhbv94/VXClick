@@ -31,6 +31,8 @@ pub struct EngineState {
     pub capture_session: Option<EventCapture>,
     pub capture_stop_flag: Arc<AtomicBool>,
     pub playback_abort_pair: Arc<(Mutex<bool>, Condvar)>,
+    pub playback_worker: Option<std::thread::JoinHandle<()>>,
+    pub is_shutting_down: Arc<AtomicBool>,
     pub app_handle: Option<AppHandle>,
     pub settings_path: Option<PathBuf>,
 }
@@ -61,6 +63,8 @@ impl MacroEngine {
                 capture_session: None,
                 capture_stop_flag: Arc::new(AtomicBool::new(false)),
                 playback_abort_pair: Arc::new((Mutex::new(false), Condvar::new())),
+                playback_worker: None,
+                is_shutting_down: Arc::new(AtomicBool::new(false)),
                 app_handle: None,
                 settings_path: None,
             })),
@@ -109,6 +113,18 @@ impl MacroEngine {
                     engine_clone.emit_state_changed(&mut state);
                     drop(state);
                     engine_clone.init_global_hotkeys();
+                } else if current_state == SystemState::PLAYING && !is_trusted {
+                    // QA05: Bị thu hồi quyền trong lúc Playback -> Kích hoạt ngắt khẩn cấp và xả input
+                    engine_clone.trigger_emergency_stop("permission_revoked");
+                    let mut state = engine_clone.inner.write().unwrap();
+                    state.current_state = SystemState::PERMISSION_BLOCKED;
+                    engine_clone.emit_state_changed(&mut state);
+                } else if current_state == SystemState::RECORDING && !is_trusted {
+                    // QA05: Bị thu hồi quyền trong lúc Recording -> Dừng capture an toàn
+                    let _ = engine_clone.stop_recording();
+                    let mut state = engine_clone.inner.write().unwrap();
+                    state.current_state = SystemState::PERMISSION_BLOCKED;
+                    engine_clone.emit_state_changed(&mut state);
                 } else if (current_state == SystemState::IDLE_EMPTY || current_state == SystemState::IDLE_READY) && !is_trusted {
                     let mut state = engine_clone.inner.write().unwrap();
                     state.current_state = SystemState::PERMISSION_BLOCKED;
@@ -225,6 +241,10 @@ impl MacroEngine {
     pub fn start_recording(&self) -> Result<u64, String> {
         let mut state = self.inner.write().unwrap();
 
+        if state.is_shutting_down.load(Ordering::SeqCst) {
+            return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
+        }
+
         if !check_accessibility_permission() {
             state.current_state = SystemState::PERMISSION_BLOCKED;
             self.emit_state_changed(&mut state);
@@ -304,11 +324,30 @@ impl MacroEngine {
             })
         });
 
-        let raw_events = if let Some(capture) = state.capture_session.take() {
+        let (raw_events, overflowed) = if let Some(capture) = state.capture_session.take() {
             capture.stop()
         } else {
-            Vec::new()
+            (Vec::new(), false)
         };
+
+        // QA02 (P1): Cơ chế overflow fail-closed: nếu hàng đợi bị đầy (>10.000 sự kiện),
+        // lập tức hủy bản ghi không trọn vẹn để bảo vệ an toàn phần cứng người dùng
+        if overflowed {
+            state.current_state = SystemState::IDLE_EMPTY;
+            state.timeline = None;
+            state.stats = None;
+            self.emit_state_changed(&mut state);
+
+            if let Some(app) = &state.app_handle {
+                let _ = app.emit(
+                    "macro://overflow_error",
+                    serde_json::json!({
+                        "message": "Bộ nhớ đệm ghi sự kiện bị đầy (>10.000 sự kiện). Bản ghi không đầy đủ và đã bị hủy an toàn."
+                    }),
+                );
+            }
+            return Err("Bộ nhớ đệm ghi sự kiện bị đầy (>10.000 sự kiện). Bản ghi không đầy đủ và đã bị hủy an toàn.".to_string());
+        }
 
         // Nén thích ứng và tự loại trừ click vào thanh VXClick
         let compressed = compress_macro_events(&raw_events, window_bounds);
@@ -369,6 +408,10 @@ impl MacroEngine {
     pub fn start_playback(&self, config: PlaybackConfig) -> Result<u64, String> {
         let mut state = self.inner.write().unwrap();
 
+        if state.is_shutting_down.load(Ordering::SeqCst) {
+            return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
+        }
+
         if state.current_state != SystemState::IDLE_READY {
             return Err("Chưa có kịch bản macro sẵn sàng trong RAM.".to_string());
         }
@@ -377,6 +420,11 @@ impl MacroEngine {
             Some(t) if !t.events.is_empty() => t.clone(),
             _ => return Err("Kịch bản macro rỗng.".to_string()),
         };
+
+        // Dọn dẹp worker cũ nếu có trước khi bắt đầu phiên mới
+        if let Some(old_worker) = state.playback_worker.take() {
+            let _ = old_worker.join();
+        }
 
         let session_id = state.session_id;
         state.current_state = SystemState::PLAYING;
@@ -397,7 +445,7 @@ impl MacroEngine {
             config.repeat_count.max(1)
         };
 
-        std::thread::spawn(move || {
+        let worker_handle = std::thread::spawn(move || {
             let injector = EventInjector::new();
             let mut ledger = ActiveInputLedger::new();
             let mut last_pos = (0, 0);
@@ -487,6 +535,8 @@ impl MacroEngine {
             engine_clone.on_playback_ended(was_aborted);
         });
 
+        state.playback_worker = Some(worker_handle);
+
         Ok(session_id)
     }
 
@@ -551,5 +601,35 @@ impl MacroEngine {
             // Giữ trạng thái EMERGENCY_STOPPED cho timer khôi phục
         }
         let _ = was_aborted;
+    }
+
+    /// QA04: Cơ chế đóng / restart an toàn: Abort worker, chờ join và xả sạch hardware ledger
+    pub fn shutdown(&self) {
+        let worker_handle = {
+            let mut state = self.inner.write().unwrap();
+            state.is_shutting_down.store(true, Ordering::SeqCst);
+
+            // Dừng capture session nếu đang ghi
+            if let Some(capture) = state.capture_session.take() {
+                let _ = capture.stop();
+            }
+
+            // Kích hoạt cờ ngắt playback nếu đang phát lại
+            let (lock, cvar) = &*state.playback_abort_pair;
+            *lock.lock().unwrap() = true;
+            cvar.notify_all();
+
+            state.playback_worker.take()
+        };
+
+        // Chờ playback worker kết thúc và xả hardware state (không giữ RwLock để tránh deadlock)
+        if let Some(h) = worker_handle {
+            let _ = h.join();
+        }
+
+        // Dừng global hotkey monitor
+        if let Some(monitor) = self._hotkey_monitor.lock().unwrap().take() {
+            monitor.stop();
+        }
     }
 }
