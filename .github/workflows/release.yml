@@ -75,6 +75,8 @@ jobs:
             asset_platform: macos_intel
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
+    env:
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v5
         with:
