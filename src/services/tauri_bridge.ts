@@ -328,8 +328,9 @@ export async function bridgeSetSettings(settings: SettingsState): Promise<void> 
 
 export async function bridgeSetAlwaysOnTop(enabled: boolean): Promise<void> {
   if (isTauri()) {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window');
-    await getCurrentWindow().setAlwaysOnTop(enabled);
+    const { invoke } = await import('@tauri-apps/api/core');
+    // Native command keeps macOS Mission Control policy after changing level.
+    await invoke<void>('set_always_on_top', { enabled });
   }
 }
 

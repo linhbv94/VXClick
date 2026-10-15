@@ -85,11 +85,15 @@ export function App() {
     }
   }, [settings.theme]);
 
-  // Phát hiện hệ điều hành macOS
+  // Phát hiện hệ điều hành macOS / Windows
   const isMac =
     typeof navigator !== 'undefined' &&
     (navigator.platform?.toLowerCase().includes('mac') ||
       navigator.userAgent.toLowerCase().includes('mac'));
+  const isWindows =
+    typeof navigator !== 'undefined' &&
+    (navigator.platform?.toLowerCase().includes('win') ||
+      navigator.userAgent.toLowerCase().includes('windows'));
 
   // Hiển thị thông báo Toast tự tắt
   const showToast = useCallback((msg: string) => {
@@ -248,6 +252,11 @@ export function App() {
 
   // Hành động 1: Ghi / Dừng Ghi Macro (F9)
   const handleToggleRecord = useCallback(async () => {
+    if (isWindows) {
+      showToast(t('windows_dummy_notice', settings.language));
+      return;
+    }
+
     if (systemState === 'PERMISSION_BLOCKED') {
       setActiveView('permission');
       showToast(t('permission_blocked_title', settings.language));
@@ -283,10 +292,15 @@ export function App() {
         showToast(err instanceof Error ? err.message : 'Lỗi khi dừng ghi');
       }
     }
-  }, [systemState, settings.language, showToast]);
+  }, [isWindows, systemState, settings.language, showToast]);
 
   // Hành động 2: Phát / Dừng Phát Macro (F8)
   const handleTogglePlay = useCallback(async () => {
+    if (isWindows) {
+      showToast(t('windows_dummy_notice', settings.language));
+      return;
+    }
+
     if (systemState === 'IDLE_READY') {
       try {
         setActiveView('main');

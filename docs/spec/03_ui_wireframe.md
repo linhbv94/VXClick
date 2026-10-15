@@ -302,3 +302,23 @@ Tuân thủ nghiêm ngặt bảng mã màu Dark/Light Mode của [master_theme.m
 | **Thanh Tiến trình (Progress)** | `#0284c7` | `#0284c7` | `bg-sky-500` | Dày 2px phản ánh tiến độ lặp X lần |
 | **Font Chữ Hệ Thống** | `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto` | `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto` | `font-sans` | Cỡ 12px, weight 500/600 |
 
+
+
+## Hiệu chỉnh traffic lights macOS — 2026-10-15
+
+Giữ control native và action hiện có, đường kính hiển thị 12pt, khoảng cách tâm 20pt. Frame và bounds phải giữ cùng kích thước/tỷ lệ native, gồm padding: không ép frame12×12 hay ép bounds vuông. SDK15.5 có bezel12×12 trong frame/bounds14×16. Lấy geometry chuẩn từ NSWindow.standardWindowButton:forStyleMask: và chỉ đổi origin; kiểm tra lại sau focus/resize. VXClick vẫn giữ chính sách ẩn Zoom của widget cố định; không đổi engine, quyền OS hoặc updater.
+
+
+## Mission Control và kích hoạt lại trên macOS — 2026-10-15
+
+Main widget là cửa sổ ứng dụng có tham gia Mission Control/Spaces và window cycling, kể cả bật Pin. Pin chỉ thay đổi window level; không biến widget thành transient panel hoặc kéo cửa sổ sang Space đang active. Chọn lại app qua Dock/LaunchServices phải hiện, bỏ minimize nếu có và focus cửa sổ hiện có tại Space của nó; không tạo widget thứ hai, không bắt đầu ghi/phát macro. Không đổi thiết lập Spaces toàn hệ thống.
+
+
+### Căn tâm dọc traffic lights theo toolbar — 2026-10-15
+
+Toolbar 38px: tâm control native trùng tâm toolbar tại y=20pt từ đỉnh content view (border shell trên 1px + toolbar38/2). Chuyển điểm từ content view sang superview của nút bằng AppKit convertPoint:fromView:, xử lý cả hệ tọa độ flipped/non-flipped. Không giữ center frame native cũ hoặc suy vị trí từ chiều cao superview titlebar. Giữ frame/bounds native cùng padding, không scale và giữ khoảng cách tâm ngang hiện có; áp dụng lại khi focus/resize.
+
+
+### Kích thước bezel và padding native — 2026-10-15
+
+12pt là đường kính bezel hiển thị, không phải kích thước NSButton view. Artifact GitHub hiện tại dùng SDK15.5: AppKit frame/bounds14×16, bezel12×12; ép frame12×12 với bounds14×14 làm bezel co còn khoảng10×10. Khôi phục frame/bounds/controlSize từ reference native cùng style mask rồi chỉ căn vị trí theo toolbar. Không suy kích thước từ bounds đã bị thay đổi ở lần focus trước. SDK26 có metrics khác; QA cần cùng SDK/profile với artifact phát hành.

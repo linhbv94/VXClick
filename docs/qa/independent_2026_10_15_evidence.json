@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-15",
+  "baseline_sha256": {
+    "src/App.tsx": "6fb7cf9bf8e1281e00ec3b08cc9f3a0dfb926b36b298e67cc9379f2782b6aa42",
+    "src/main.tsx": "d023b040a49bd09e8c6578e13144baaa497a56e8feca6109bbbf617a1f7b976f",
+    "src/.DS_Store": "93a1d4e66dea5a0112e3f8b8a83868b3ffaa7f7471a1e80168f93a3b1823dab3",
+    "src/index.css": "3513a75164acafcba1819c8f9533a385a77c56150cc98c4373a1c64b29601085",
+    "src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "src/types/macro.ts": "66751d445b0eefcc780c24a6757265149c88fb83d14c15e4c138eeaebcebd7b7",
+    "src/components/PlaybackMiniBar.tsx": "3e0702e922a2d3fcf06e6db9a7233849b6b7f3cd4db83cd7563d3624c4027f8a",
+    "src/components/MainBar.tsx": "20f1642f5971bc84266964954b7d7e6a00cef6dde863db4fead1bc57f815c0e8",
+    "src/components/SettingsPopover.tsx": "ba6fe9052ea3be4e6cc8b0cf01913b6f286556cdf39822863f9427f0f59bf3d1",
+    "src/components/AboutModal.tsx": "db43a8bdedc6b0d00cddca794a72a8e5927bb2c5f65e6b760b6283c232abfca0",
+    "src/components/PermissionModal.tsx": "2fb4bb85a7e4ad2e216d4e4d908670fa7ec62db5e0caaef2f71c880a4823ba5a",
+    "src/components/SupportModal.tsx": "97399498740de243e9699b59abd14d314f1983b367d98b38b4279eee31751ce0",
+    "src/i18n/translations.ts": "61a49b1717c2a602c3e47efceba6968655d4421d7ddefd0e2082f82df6e905d0",
+    "src/assets/logo.png": "0b09004296a7587072070bca1cbdbad0c03deb19ca24424ca14da1e9d4d40ebe",
+    "src/assets/qr.png": "4660252e861c2f5c1c73875885bad7ed35f35e33874da45b66782afe636b2abd",
+    "src/services/tauri_bridge.ts": "e267e60fb993ce6fce74f3e825a2e1a8dd4012792ebd420a8769ef70410bef01",
+    "src-tauri/src/ledger.rs": "418b6e305a2e533b53abdf846ee2f6fb3024b53f28b409cc9a55bb359c9a7e83",
+    "src-tauri/src/types.rs": "4fddb62d2b3600763ffd71df12df4bad3b615718795399ebc665aae1694d5ad5",
+    "src-tauri/src/lib.rs": "3c8f741396e9e6aecd2962079ca93c2c9b6e129950d3ad4dc7517a6ac508fd7b",
+    "src-tauri/src/compressor.rs": "b1cd27399a6d092ed0786a8f840e8c5b3cdcb1e5a09ac7ab30c4069c60e5526a",
+    "src-tauri/src/main.rs": "d57173c657bc6c5951442911efd3b8b2c1357db0873162e08762329c8d6fac87",
+    "src-tauri/src/platform/macos.rs": "753d65321e8ccd270defa1e2fb875418271a8370be7c03669adbdb59f6762cab",
+    "src-tauri/src/platform/mod.rs": "5ac2bc1ac29eadbe98e90e6db275f303aad975c778a431909b18ed20a6cb9dc7",
+    "src-tauri/src/platform/windows.rs": "e586a48b2ce028e861ebe4ccc68abc866bbd8fcdc25853900045d7e722f153bb",
+    "src-tauri/src/engine/mod.rs": "35b23f668d11868ef9a865b4e465c2619fdd8ac8a133b118163b50ebef656a9e",
+    "package.json": "6f99780c01b4ff836d76f3dfe10d74d20fb5a50558cd9a796965a06be61a0c99"
+  },
+  "changed_since_baseline": [],
+  "notes": "MP3 version/package metadata intentionally changed for release; no audio engine edits. Click production source unchanged.",
+  "native_bundle": {
+    "identifier": "com.vxclick.qa.align20261015",
+    "version": "1.0.0",
+    "binary_sha256": "de0a3d97cfcd77faa51ee61feb0ef46a438bf719ce3a9ee2ebd14eb889609248",
+    "profile": "debug; not for performance or release identity claims"
+  },
+  "checks": {
+    "frontend": {
+      "exit_code": 0
+    },
+    "rust": {
+      "exit_code": 0,
+      "passed": 13,
+      "ignored": 0
+    },
+    "node": {
+      "exit_code": 0,
+      "passed": 8
+    }
+  },
+  "tail_trim_regression": {
+    "exit_code": 101,
+    "passed": 7,
+    "failed": 1
+  },
+  "old_compressor_regressions": {
+    "exit_code": 0,
+    "passed": 9
+  }
+}

@@ -1,7 +1,8 @@
 // Thuật toán Nén Thích ứng Sự kiện Di Chuột (Bảo Toàn Drag Nét Vẽ) & Bộ Lọc Tự Loại Trừ (Self-exclusion)
 // Tuân thủ nghiêm ngặt mục 3 và mục 5 trong docs/spec/04_api_data.md và docs/spec/00_system_overview.md
 
-use crate::types::{MacroAction, MacroEvent};
+use std::collections::HashMap;
+use crate::types::{MacroAction, MacroEvent, MouseBtn};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WindowRect {
@@ -37,8 +38,8 @@ pub fn compress_macro_events(
     // BẢO TOÀN NGUYÊN VẸN CẶP MOUSEDOWN / MOUSEUP (QA01):
     // - Down ngoài widget, Up trên widget: Giữ cả hai (drag ngoài kết thúc trên widget).
     // - Down trên widget, Up ngoài widget: Bỏ cả hai (kéo từ widget ra ngoài).
-    use std::collections::HashMap;
-    use crate::types::MouseBtn;
+    // Hằng số padding nhận diện thanh công cụ VXClick thống nhất giữa các giai đoạn
+    pub const WIDGET_PADDING: f64 = 8.0;
 
     let mut step1_events = Vec::with_capacity(raw_events.len());
     let mut button_started_inside: HashMap<MouseBtn, bool> = HashMap::new();
@@ -47,7 +48,7 @@ pub fn compress_macro_events(
         match &ev.action {
             MacroAction::MouseDown { button, x, y } => {
                 let is_inside = if let Some(bounds) = window_bounds {
-                    bounds.contains_point(*x, *y, 8.0)
+                    bounds.contains_point(*x, *y, WIDGET_PADDING)
                 } else {
                     false
                 };
@@ -69,7 +70,7 @@ pub fn compress_macro_events(
                     None => {
                         // MouseUp mồ côi (không có MouseDown trước đó trong bản ghi)
                         let is_inside = if let Some(bounds) = window_bounds {
-                            bounds.contains_point(*x, *y, 8.0)
+                            bounds.contains_point(*x, *y, WIDGET_PADDING)
                         } else {
                             false
                         };
@@ -85,19 +86,21 @@ pub fn compress_macro_events(
         }
     }
 
-    // Tỉa bỏ cú click vào nút Stop ở cuối bản ghi nếu còn sót lại.
-    // BẢO VỆ CẶP (QA01): Chỉ tỉa khi cả MouseUp và MouseDown tương ứng ĐỀU nằm trên widget!
+    // Tỉa bỏ cú click vào thanh widget ở cuối bản ghi nếu còn sót lại.
+    // BẢO VỆ CẶP & BẢO VỆ BÀN PHÍM:
+    // - Chỉ tỉa khi cả MouseUp và MouseDown tương ứng ĐỀU nằm trên widget (cùng padding WIDGET_PADDING).
+    // - Chỉ xóa đúng các sự kiện chuột của gesture đó, TUYỆT ĐỐI KHÔNG truncate làm mất phím hay nút khác.
     if let Some(bounds) = window_bounds {
         while let Some(last) = step1_events.last() {
             match &last.action {
                 MacroAction::MouseUp { button, x, y } => {
-                    if bounds.contains_point(*x, *y, 16.0) {
+                    if bounds.contains_point(*x, *y, WIDGET_PADDING) {
                         let target_btn = *button;
                         let mut matching_down_idx = None;
                         for i in (0..step1_events.len() - 1).rev() {
                             match &step1_events[i].action {
                                 MacroAction::MouseDown { button: b, x: dx, y: dy } if *b == target_btn => {
-                                    if bounds.contains_point(*dx, *dy, 16.0) {
+                                    if bounds.contains_point(*dx, *dy, WIDGET_PADDING) {
                                         matching_down_idx = Some(i);
                                     }
                                     break;
@@ -110,7 +113,21 @@ pub fn compress_macro_events(
                         }
 
                         if let Some(down_idx) = matching_down_idx {
-                            step1_events.truncate(down_idx);
+                            let last_idx = step1_events.len() - 1;
+                            let mut to_remove = vec![false; step1_events.len()];
+                            to_remove[down_idx] = true;
+                            to_remove[last_idx] = true;
+                            for k in (down_idx + 1)..last_idx {
+                                if matches!(&step1_events[k].action, MacroAction::MouseMove { x: mx, y: my } if bounds.contains_point(*mx, *my, WIDGET_PADDING)) {
+                                    to_remove[k] = true;
+                                }
+                            }
+                            let mut idx = 0;
+                            step1_events.retain(|_| {
+                                let keep = !to_remove[idx];
+                                idx += 1;
+                                keep
+                            });
                             continue;
                         }
                     }
@@ -119,6 +136,14 @@ pub fn compress_macro_events(
                 MacroAction::MouseDown { .. } => {
                     // MouseDown lẻ loi ở cuối không có MouseUp -> tỉa bỏ để tránh kẹt chuột
                     step1_events.pop();
+                }
+                MacroAction::MouseMove { x, y } => {
+                    // Di chuột rà lên widget ở cuối bản ghi
+                    if bounds.contains_point(*x, *y, WIDGET_PADDING) {
+                        step1_events.pop();
+                    } else {
+                        break;
+                    }
                 }
                 _ => break,
             }
@@ -547,5 +572,122 @@ mod tests {
                 y: 150
             }
         );
+    }
+
+    #[test]
+    fn test_tail_trim_never_drops_keyboard_release_between_mouse_pair() {
+        let events = vec![
+            MacroEvent {
+                timestamp_us: 0,
+                action: MacroAction::KeyDown {
+                    key_code: 13,
+                    modifiers: 0,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 10,
+                action: MacroAction::MouseDown {
+                    button: MouseBtn::Left,
+                    x: 90,
+                    y: 150,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 20,
+                action: MacroAction::KeyUp {
+                    key_code: 13,
+                    modifiers: 0,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 30,
+                action: MacroAction::MouseUp {
+                    button: MouseBtn::Left,
+                    x: 90,
+                    y: 150,
+                },
+            },
+        ];
+        let out = compress_macro_events(
+            &events,
+            Some(WindowRect {
+                min_x: 100.0,
+                min_y: 100.0,
+                max_x: 200.0,
+                max_y: 200.0,
+            }),
+        );
+        let keyboard: Vec<_> = out
+            .iter()
+            .filter(|e| matches!(e.action, MacroAction::KeyDown { .. } | MacroAction::KeyUp { .. }))
+            .collect();
+        assert_eq!(
+            keyboard.len(),
+            2,
+            "self-exclusion must preserve unrelated key release: {:?}",
+            out
+        );
+    }
+
+    #[test]
+    fn test_tail_trim_preserves_modifiers_and_multiple_buttons() {
+        let bounds = WindowRect {
+            min_x: 100.0,
+            min_y: 100.0,
+            max_x: 200.0,
+            max_y: 200.0,
+        };
+        let events = vec![
+            MacroEvent {
+                timestamp_us: 0,
+                action: MacroAction::KeyDown {
+                    key_code: 56, // Shift
+                    modifiers: 1,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 10,
+                action: MacroAction::MouseDown {
+                    button: MouseBtn::Right,
+                    x: 150,
+                    y: 150,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 20,
+                action: MacroAction::KeyDown {
+                    key_code: 0, // A
+                    modifiers: 1,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 30,
+                action: MacroAction::MouseUp {
+                    button: MouseBtn::Right,
+                    x: 150,
+                    y: 150,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 40,
+                action: MacroAction::KeyUp {
+                    key_code: 0,
+                    modifiers: 1,
+                },
+            },
+            MacroEvent {
+                timestamp_us: 50,
+                action: MacroAction::KeyUp {
+                    key_code: 56,
+                    modifiers: 0,
+                },
+            },
+        ];
+        let out = compress_macro_events(&events, Some(bounds));
+        let keyboard: Vec<_> = out
+            .iter()
+            .filter(|e| matches!(e.action, MacroAction::KeyDown { .. } | MacroAction::KeyUp { .. }))
+            .collect();
+        assert_eq!(keyboard.len(), 4, "all 4 key events must be preserved");
     }
 }

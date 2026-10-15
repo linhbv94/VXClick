@@ -1,0 +1,27 @@
+
+running 8 tests
+test compressor::tests::test_preserve_clicks_and_keys ... ok
+test compressor::tests::test_drag_mode_preserves_sampling ... ok
+test compressor::tests::test_self_exclusion_window_clicks ... ok
+test compressor::tests::test_drag_crossing_boundaries_multiple_buttons ... ok
+test compressor::tests::test_widget_drag_release_outside_does_not_emit_orphan_up ... ok
+test compressor::tests::test_external_drag_release_on_widget_retains_balanced_pair ... ok
+test compressor::tests::test_jitter_removal_on_free_move ... ok
+test tail_trim_never_drops_keyboard_release_between_mouse_pair ... FAILED
+
+failures:
+
+---- tail_trim_never_drops_keyboard_release_between_mouse_pair stdout ----
+
+thread 'tail_trim_never_drops_keyboard_release_between_mouse_pair' (10423317) panicked at /var/folders/zb/hp1727994p39j_spyh0crq_00000gn/T/vxclick_qa_pjyw5d4m/regression.rs:14:2:
+assertion `left == right` failed: self-exclusion must preserve unrelated key release: [MacroEvent { timestamp_us: 0, action: KeyDown { key_code: 13, modifiers: 0 } }]
+  left: 1
+ right: 2
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tail_trim_never_drops_keyboard_release_between_mouse_pair
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

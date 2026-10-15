@@ -21,6 +21,7 @@ export const TRANSLATIONS = {
     traffic_lights_title: 'Vùng điều khiển native macOS',
     minimize_title: 'Thu nhỏ',
     close_title: 'Đóng ứng dụng',
+    windows_dummy_notice: 'Bản Windows đang dùng dummy UI; engine Win32 sẽ tự động cập nhật trong bản tới.',
 
     // Playback Mini Bar
     status_loop_progress: 'Đã lặp',
@@ -109,6 +110,7 @@ export const TRANSLATIONS = {
     traffic_lights_title: 'macOS native control area',
     minimize_title: 'Minimize',
     close_title: 'Close application',
+    windows_dummy_notice: 'Windows engine is in progress and will auto-update in the next release.',
 
     // Playback Mini Bar
     status_loop_progress: 'Looped',

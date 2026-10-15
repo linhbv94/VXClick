@@ -1,0 +1,20 @@
+
+> vxclick@1.0.0 test:automation
+> node --test scripts/test_release_automation.mjs scripts/test_version.mjs
+
+✔ Tauri signature verification accepts independent legacy/prehashed Minisign vectors and rejects tampering (5.316166ms)
+✔ six assets must include distinct installers and architecture-correct updater URLs (1.319458ms)
+✔ notes require real version-specific changes and link only first-install downloads (0.851625ms)
+✔ stable version comparisons reject a rollback or re-publishing the same version (0.342625ms)
+✔ publish refuses unconfirmed QA or a failed exact-commit build before downloading or mutating assets (134.340709ms)
+✔ finalization preserves the draft tag and publishes only verified packages; corruption leaves it untouched (231.279958ms)
+✔ version bump repairs renamed npm lock names, independently locates Cargo crate and preserves dependencies (142.445625ms)
+✔ missing Cargo root entry fails before any manifest write (49.824916ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 439.7465

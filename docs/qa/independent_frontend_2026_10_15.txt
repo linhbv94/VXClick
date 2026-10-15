@@ -1,0 +1,19 @@
+
+> vxclick@1.0.0 build
+> tsc && vite build
+
+vite v8.3.2 building client environment for production...
+transforming...
+✓ 1913 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.52 kB │ gzip:  0.34 kB
+dist/assets/qr-BIRZLQ76.png      48.72 kB
+dist/assets/logo-DH4s3Z_V.png   301.72 kB
+dist/assets/index-DILMGan4.css   41.14 kB │ gzip:  7.53 kB
+dist/assets/core-BrXq0wPV.js      1.12 kB │ gzip:  0.55 kB
+dist/assets/event-S6jrA9g6.js     1.37 kB │ gzip:  0.65 kB
+dist/assets/window-CJO6PfOp.js   13.54 kB │ gzip:  3.27 kB
+dist/assets/index-Boe0sfqv.js   289.84 kB │ gzip: 86.40 kB
+
+✓ built in 817ms

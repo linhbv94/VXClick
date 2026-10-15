@@ -7,9 +7,9 @@
 
 ---
 
-## Trạng thái kiểm chứng độc lập — 2026-10-15
+## Trạng thái kiểm chứng độc lập — 2026-10-15 (lượt mới)
 
-**BLOCKED, chưa release-ready.** Các kịch bản bên dưới là contract cần đạt, không phải tất cả đã PASS. [Final QA và bàn giao](../final_qa_2026_10_15.md) ghi 2 regression self-exclusion FAIL, overflow/hotkey/shutdown blockers và các gate native chưa kiểm. Frontend build và 6 test cũ PASS không thay native capture/injection. Bundle hiện có không vượt qua phép kiểm codesign strict do `CSSMERR_TP_NOT_TRUSTED`. Windows vẫn dummy; không được nghiệm thu như Windows engine thật.
+**BLOCKED vì regression tail-trim mới**, xem [bàn giao độc lập](../independent_qa_2026_10_15.md). Hai fixture cũ đã PASS; 13 Rust tests, frontend và 8 Node tests PASS. Fixture mới chứng minh tail-trim xóa KeyUp xen giữa mouse pair sát mép widget. Native QA chỉ permission-blocked/Pin/cửa sổ, chưa capture/inject hoặc Mission Control/cross-Space. Báo cáo final QA đầu ngày là lịch sử, không đại diện toàn bộ source hiện tại. Windows dummy được release theo AGENTS1.6 sau khi có thông báo giới hạn/capability guard và updater thật; không cần đợi engine Win32.
 
 ---
 
@@ -178,3 +178,12 @@ Feature: Quản lý Cửa sổ Thanh Công cụ Nổi
 | **14** | Tổ hợp phím phức tạp có nhiều modifier (Ctrl + Shift + Alt + Windows + Key) | Thứ tự nhả phím bị sai lệch | Ghi nhận chính xác chuỗi `KeyDown` và `KeyUp` riêng rẽ cho từng phím thành phần, không phụ thuộc vào trạng thái gộp. |
 | **15** | Tệp kịch bản `.vxclick` bị lỗi cấu trúc hoặc hỏng checksum | Crash tiến trình hoặc làm mất macro hiện có trong RAM | Kiểm tra toàn vẹn định dạng nhị phân và CRC32 trước khi nạp; nếu lỗi từ chối nạp và bảo toàn macro cũ trong RAM. |
 
+
+
+## Regression cửa sổ macOS — 2026-10-15
+
+- Main widget hiện trong Mission Control ở Desktop sở hữu, cả Pin ON/OFF.
+- Từ Desktop khác, chọn lại app chuyển về cửa sổ/Space đang có; lặp lại khi cửa sổ minimized/hidden. Không nhân đôi cửa sổ, không gọi capture/playback hoặc xin thêm quyền.
+- Bật/tắt Pin nhiều lần vẫn giữ Mission Control/window cycling, đóng app vẫn shutdown engine.
+- Traffic lights giữ bezel native đúng đường kính sau launch/focus/resize; không ép frame12×12 hoặc bounds vuông. Lấy frame/bounds/controlSize mới từ AppKit và giữ padding, QA bằng SDK/profile của release.
+- Các tiêu chí là contract, chỉ đánh dấu PASS khi có evidence native tương ứng.

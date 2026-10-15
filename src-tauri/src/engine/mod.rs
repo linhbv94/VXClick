@@ -406,6 +406,22 @@ impl MacroEngine {
     // ==========================================
 
     pub fn start_playback(&self, config: PlaybackConfig) -> Result<u64, String> {
+        let old_worker = {
+            let mut state = self.inner.write().unwrap();
+            if state.is_shutting_down.load(Ordering::SeqCst) {
+                return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
+            }
+            if state.current_state != SystemState::IDLE_READY {
+                return Err("Chưa có kịch bản macro sẵn sàng trong RAM.".to_string());
+            }
+            state.playback_worker.take()
+        };
+
+        // Dọn dẹp worker cũ ngoài RwLock để tránh deadlock với on_playback_ended
+        if let Some(w) = old_worker {
+            let _ = w.join();
+        }
+
         let mut state = self.inner.write().unwrap();
 
         if state.is_shutting_down.load(Ordering::SeqCst) {
@@ -420,11 +436,6 @@ impl MacroEngine {
             Some(t) if !t.events.is_empty() => t.clone(),
             _ => return Err("Kịch bản macro rỗng.".to_string()),
         };
-
-        // Dọn dẹp worker cũ nếu có trước khi bắt đầu phiên mới
-        if let Some(old_worker) = state.playback_worker.take() {
-            let _ = old_worker.join();
-        }
 
         let session_id = state.session_id;
         state.current_state = SystemState::PLAYING;
