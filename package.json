@@ -9,11 +9,16 @@
     "build": "tsc && vite build",
     "bundle:mac": "node scripts/build_signed_macos.mjs",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "version:set": "node scripts/set_version.mjs",
+    "release:check": "node scripts/validate_release.mjs",
+    "test:automation": "node --test scripts/test_release_automation.mjs scripts/test_version.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.1",
     "@tauri-apps/plugin-opener": "^2.0.0",
+    "@tauri-apps/plugin-process": "^2.0.0",
+    "@tauri-apps/plugin-updater": "^2.0.0",
     "lucide-react": "^1.52.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
