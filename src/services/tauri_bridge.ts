@@ -391,7 +391,11 @@ export async function bridgeSyncWindowHeight(
     const dockMargin = 70; // Tránh Dock macOS và mép dưới màn hình
     const maxBottom = monitorY + monitorHeight - dockMargin;
 
-    const heightDiff = targetHeight - currentLogicalHeight;
+    // Giới hạn targetHeight không vượt quá chiều cao khả dụng trên màn hình
+    const maxAvailableH = Math.max(200, Math.floor(monitorHeight - dockMargin - 25));
+    const safeTargetHeight = Math.min(targetHeight, maxAvailableH);
+
+    const heightDiff = safeTargetHeight - currentLogicalHeight;
 
     if (accumulatedUpShift > 0) {
       // Đang trong chế độ expand-up từ trước (ví dụ chuyển từ Settings sang Support)
@@ -399,24 +403,24 @@ export async function bridgeSyncWindowHeight(
         const newY = currentLogicalY - heightDiff;
         accumulatedUpShift += heightDiff;
         await win.setPosition(
-          new LogicalPosition(currentLogicalX, Math.max(monitorY + 25, newY))
+            new LogicalPosition(currentLogicalX, Math.max(monitorY + 25, newY))
         );
-        await win.setSize(new LogicalSize(310, targetHeight));
+        await win.setSize(new LogicalSize(310, safeTargetHeight));
       }
     } else {
       // Kiểm tra xem nếu nở xuống dưới thì có chạm đáy không
-      const projectedBottom = currentLogicalY + targetHeight;
+      const projectedBottom = currentLogicalY + safeTargetHeight;
       if (projectedBottom > maxBottom) {
         // Cần nở lên trên
-        const shift = targetHeight - 38;
+        const shift = safeTargetHeight - 38;
         const newY = Math.max(monitorY + 25, currentLogicalY - shift);
         accumulatedUpShift = currentLogicalY - newY;
         await win.setPosition(new LogicalPosition(currentLogicalX, newY));
-        await win.setSize(new LogicalSize(310, targetHeight));
+        await win.setSize(new LogicalSize(310, safeTargetHeight));
       } else {
         // Nở xuống bình thường
         accumulatedUpShift = 0;
-        await win.setSize(new LogicalSize(310, targetHeight));
+        await win.setSize(new LogicalSize(310, safeTargetHeight));
       }
     }
   } catch (err) {

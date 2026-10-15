@@ -36,6 +36,8 @@ run('npx', [
   'build',
   '--bundles',
   'app',
+  '--config',
+  JSON.stringify({ bundle: { createUpdaterArtifacts: false } }),
   '--',
   '--offline'
 ]);

@@ -22,6 +22,7 @@ interface MainBarProps {
   language: LanguageMode;
   recordingElapsedFormatted?: string;
   playbackProgress?: PlaybackProgressPayload;
+  hasUpdateAvailable?: boolean;
   onToggleRecord: () => void;
   onTogglePlay: () => void;
   onTogglePin: () => void;
@@ -43,6 +44,7 @@ export const MainBar: React.FC<MainBarProps> = ({
   language,
   recordingElapsedFormatted,
   playbackProgress,
+  hasUpdateAvailable = false,
   onToggleRecord,
   onTogglePlay,
   onTogglePin,
@@ -210,14 +212,26 @@ export const MainBar: React.FC<MainBarProps> = ({
         <button
           type="button"
           onClick={onToggleSetting}
-          title={t('settings_title', language)}
-          className={`p-1.5 rounded-lg text-xs transition-all active:scale-95 border ${
+          title={
+            hasUpdateAvailable
+              ? t('settings_update_available_title', language)
+              : t('settings_title', language)
+          }
+          className={`relative p-1.5 rounded-lg text-xs transition-all active:scale-95 border ${
             isSettingOpen
               ? 'text-cyan-700 bg-cyan-500/20 border-cyan-500/40 dark:text-cyan-300 dark:bg-white/10 dark:border-white/20'
+              : hasUpdateAvailable
+              ? 'text-cyan-600 dark:text-cyan-300 bg-cyan-500/15 border-cyan-500/40 shadow-xs shadow-cyan-400/40 ring-1 ring-cyan-400/30'
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-white/5 border-transparent'
           }`}
         >
           <Settings2 className="w-3.5 h-3.5" />
+          {hasUpdateAvailable && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500 ring-1.5 ring-white dark:ring-slate-900" />
+            </span>
+          )}
         </button>
       </div>
 

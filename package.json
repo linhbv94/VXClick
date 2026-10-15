@@ -1,6 +1,6 @@
 {
   "name": "vxclick",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "VXClick — Ultra-compact Macro Recorder & Automation Engine",
   "main": "index.js",
   "type": "module",
@@ -12,7 +12,7 @@
     "tauri": "tauri",
     "version:set": "node scripts/set_version.mjs",
     "release:check": "node scripts/validate_release.mjs",
-    "test:automation": "node --test scripts/test_release_automation.mjs scripts/test_version.mjs"
+    "test:automation": "node --test scripts/test_release_automation.mjs scripts/test_version.mjs scripts/test_updates.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.1",

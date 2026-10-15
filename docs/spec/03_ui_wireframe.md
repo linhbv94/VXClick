@@ -322,3 +322,29 @@ Toolbar 38px: tâm control native trùng tâm toolbar tại y=20pt từ đỉnh 
 ### Kích thước bezel và padding native — 2026-10-15
 
 12pt là đường kính bezel hiển thị, không phải kích thước NSButton view. Artifact GitHub hiện tại dùng SDK15.5: AppKit frame/bounds14×16, bezel12×12; ép frame12×12 với bounds14×14 làm bezel co còn khoảng10×10. Khôi phục frame/bounds/controlSize từ reference native cùng style mask rồi chỉ căn vị trí theo toolbar. Không suy kích thước từ bounds đã bị thay đổi ở lần focus trước. SDK26 có metrics khác; QA cần cùng SDK/profile với artifact phát hành.
+
+---
+
+## 10. Tích hợp Cập nhật Tự động (Auto-Update) & Chỉ báo Notification Nút Setting — 2026-10-15
+
+### 10.1. Hiệu ứng Nút Setting Phát Sáng & Chấm Báo Cập nhật (Notification Glow)
+Khi hệ thống phát hiện có phiên bản cập nhật mới (`updateState.status === 'available'` hoặc `'installed'`):
+- **Hiệu ứng trên thanh chính (`MainBar.tsx`):**
+  - Nút `⚙ Setting` tự động chuyển sang trạng thái viền sáng và nền phát quang Cyan nhẹ (`bg-cyan-500/15 border-cyan-500/40 shadow-xs shadow-cyan-400/40 ring-1 ring-cyan-400/30`).
+  - Đi kèm một chấm tròn báo hiệu động kép ở góc trên bên phải: bao gồm 1 vòng phát xung (`animate-ping absolute bg-cyan-400 opacity-75`) và 1 điểm định vị tĩnh (`relative inline-flex h-2 w-2 bg-cyan-500 ring-1.5 ring-white dark:ring-slate-900`).
+  - Tooltip tự động chuyển thành: `Cài đặt & Tùy chọn (Có bản cập nhật mới)`.
+- Khi người dùng bấm mở Setting, popover mở rộng xuống dưới và hiển thị ngay thông tin bản mới cùng nút cài đặt 1 chạm.
+
+### 10.2. Khối Cập nhật Ứng dụng trong Bảng Cài đặt Mở rộng (`SettingsPopover.tsx`)
+Nằm ở vị trí Mục 7 ngay trước cụm About/Support, thiết kế bo góc `rounded-lg` đồng nhất theo chuẩn zTools:
+- **Tiêu đề khối:** Icon `RefreshCw` + chữ "Cập nhật phần mềm" + badge phiên bản hiện tại `v1.0.1`.
+- **Máy trạng thái hữu hạn (FSM Lifecycle):**
+  1. `idle`: Hiển thị "Tự động kiểm tra bản mới khi mở ứng dụng" kèm nút "Kiểm tra cập nhật".
+  2. `checking`: Spinner `RefreshCw animate-spin` kèm dòng "Đang kiểm tra cập nhật…".
+  3. `current`: Icon `CheckCircle2` xanh ngọc kèm dòng "Bạn đang dùng phiên bản mới nhất." + link "Kiểm tra lại".
+  4. `available`: Icon `Sparkles text-cyan-500 animate-pulse` "Có bản cập nhật mới: vX.X.X" + nút CTA chính màu Cyan "Cập nhật & Khởi động lại" (`Download`).
+  5. `downloading`: Tên trạng thái kèm phần trăm tiến độ tải về và thanh Progress Bar mượt mà 1.5px.
+  6. `installing`: Spinner kèm dòng "Đang cài đặt bản cập nhật…".
+  7. `installed`: Dòng "Đã cài đặt xong. Khởi động lại để áp dụng." kèm nút CTA màu Emerald "Khởi động lại ngay".
+  8. `error`: Icon `AlertCircle` cảnh báo kèm nút "Thử lại".
+  9. `disabled`: Chữ mờ ghi chú "Cập nhật khả dụng trên bản cài đặt chính thức." khi chạy môi trường dev/không phải cửa sổ chính.

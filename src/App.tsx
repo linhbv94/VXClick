@@ -38,8 +38,12 @@ import {
   bridgeListenPlaybackProgress,
   bridgeListenEmergencyStopped,
 } from './services/tauri_bridge';
+import { useAppUpdater } from './services/app_updater';
 
 export function App() {
+  const updateState = useAppUpdater();
+  const hasUpdateAvailable =
+    updateState.status === 'available' || updateState.status === 'installed';
   const [systemState, setSystemState] = useState<SystemState>('IDLE_EMPTY');
   const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
   const [activeView, setActiveView] = useState<ActiveView>('main');
@@ -372,6 +376,7 @@ export function App() {
       language={settings.language}
       recordingElapsedFormatted={recordingElapsed}
       playbackProgress={playbackProgress}
+      hasUpdateAvailable={hasUpdateAvailable}
       onToggleRecord={handleToggleRecord}
       onTogglePlay={handleTogglePlay}
       onTogglePin={handleTogglePin}

@@ -96,7 +96,13 @@ jobs:
       - name: Compressor regression tests
         run: python3 docs/qa/run_compressor_regressions.py
       - name: Test release automation
-        run: node --test scripts/test_release_automation.mjs scripts/test_version.mjs
+        run: node --test scripts/test_release_automation.mjs scripts/test_version.mjs scripts/test_updates.mjs
+      - name: Install stable macOS signing identity
+        if: runner.os == 'macOS'
+        env:
+          VXCLICK_MACOS_CERTIFICATE: ${{ secrets.VXCLICK_MACOS_CERTIFICATE }}
+          VXCLICK_MACOS_CERTIFICATE_PASSWORD: ${{ secrets.VXCLICK_MACOS_CERTIFICATE_PASSWORD }}
+        run: python3 scripts/ci_macos_signer.py install
       - name: Build and upload signed updater packages
         uses: tauri-apps/tauri-action@v1
         env:
@@ -114,7 +120,16 @@ jobs:
           releaseAssetNamePattern: '${{ needs.prepare.outputs.asset_prefix }}_[version]_${{ matrix.asset_platform }}[_setup][ext]'
           projectPath: .
           tauriScript: npm run tauri
-          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} -- --locked
+          args: ${{ env.VXCLICK_SIGNER_CONFIG != '' && format('--config "{0}" ', env.VXCLICK_SIGNER_CONFIG) || '' }}--target ${{ matrix.target }} --bundles ${{ matrix.bundles }} -- --locked
+      - name: Verify certificate-bound package identity on macOS
+        if: runner.os == 'macOS' && env.VXCLICK_SIGNER_CONFIG != ''
+        run: |
+          APP="src-tauri/target/${{ matrix.target }}/release/bundle/macos/VXClick.app"
+          codesign --verify --deep --strict "$APP"
+          codesign -d -r- "$APP" 2>&1 | grep -F 'certificate leaf = H"fe024021592c718a39ad70b76d2edc5da0cd6b70"'
+      - name: Remove temporary signing identity
+        if: always() && runner.os == 'macOS'
+        run: python3 scripts/ci_macos_signer.py cleanup
 
   validate:
     needs: [prepare, build]

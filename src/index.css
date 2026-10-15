@@ -56,7 +56,9 @@
 .widget_content {
   width: 100%;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
-  overflow: hidden;
+  max-height: min(520px, calc(100vh - 80px));
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .dark .widget_content {
