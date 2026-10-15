@@ -29,13 +29,13 @@ test('Tauri signature verification accepts independent legacy/prehashed Minisign
   assert.throws(() => verifySignature(Buffer.from('test'), Buffer.from(wrongKey.join('\n')).toString('base64'), signatures[0]), /Signing key/);
 });
 
-test('five assets must include distinct installers and architecture-correct updater URLs (Mac-only profile)', () => {
+test('six assets must include distinct installers and architecture-correct updater URLs', () => {
   const config = { productName: 'Example App', version: '2.1.0' };
   const names = releaseAssets(config);
   const assets = ['latest.json', ...Object.values(names)].map((name) => ({ name, size: 100 }));
-  const platforms = Object.fromEntries(['darwin-aarch64', 'darwin-x86_64'].map((platform) => [platform, { url: `https://github.com/example/app/releases/download/v2.1.0/${names[platform]}` }]));
+  const platforms = Object.fromEntries(['windows-x86_64', 'darwin-aarch64', 'darwin-x86_64'].map((platform) => [platform, { url: `https://github.com/example/app/releases/download/v2.1.0/${names[platform]}` }]));
   validateAssetLayout(config, { platforms }, assets);
-  assert.throws(() => validateAssetLayout(config, { platforms }, assets.slice(0, -1)), /five/);
+  assert.throws(() => validateAssetLayout(config, { platforms }, assets.slice(0, -1)), /six/);
   platforms['darwin-aarch64-app'] = { url: platforms['darwin-x86_64'].url };
   assert.throws(() => validateAssetLayout(config, { platforms }, assets), /architecture/);
   delete platforms['darwin-aarch64-app'];
@@ -48,10 +48,10 @@ test('notes require real version-specific changes and link only first-install do
   try {
     const config = { productName: 'Example App', version: '2.1.0' };
     assert.throws(() => releaseNotes(config, 'example/app', 'v2.1.0', root));
-    writeFileSync(join(root, '2.1.0.md'), '- Ghi và phát macro nhanh hơn.');
+    writeFileSync(join(root, '2.1.0.md'), '- Mở thư mục nhanh hơn.');
     const notes = releaseNotes(config, 'example/app', 'v2.1.0', root);
-    assert.ok(notes.startsWith('- Ghi và phát macro nhanh hơn.'));
-    assert.equal((notes.match(/releases\/download\/v2.1.0\//g) || []).length, 2);
+    assert.ok(notes.startsWith('- Mở thư mục nhanh hơn.'));
+    assert.equal((notes.match(/releases\/download\/v2.1.0\//g) || []).length, 3);
     assert.ok(!notes.includes('.app.tar.gz') && !notes.includes('latest.json'));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -89,13 +89,13 @@ test('finalization preserves the draft tag and publishes only verified packages;
     try {
       const config = { productName: 'Example App', version: '2.1.0', plugins: { updater: { pubkey: publicKey } } };
       const names = releaseAssets(config);
-      const platforms = Object.fromEntries(['darwin-aarch64', 'darwin-x86_64'].map((platform) => [platform, {
+      const platforms = Object.fromEntries(['windows-x86_64', 'darwin-aarch64', 'darwin-x86_64'].map((platform) => [platform, {
         url: `https://github.com/example/app/releases/download/v2.1.0/${names[platform]}`, signature: signatures[1],
       }]));
       const assets = ['latest.json', ...Object.values(names)].map((name, id) => ({ id: id + 1, name, size: 4 }));
       mkdirSync(join(root, 'src-tauri')); mkdirSync(join(root, 'docs/release_notes'), { recursive: true });
       writeFileSync(join(root, 'src-tauri/tauri.conf.json'), JSON.stringify(config));
-      writeFileSync(join(root, 'docs/release_notes/2.1.0.md'), '- Ghi và phát macro nhanh hơn.');
+      writeFileSync(join(root, 'docs/release_notes/2.1.0.md'), '- Mở thư mục nhanh hơn.');
       const manifestPath = join(root, 'latest.json');
       writeFileSync(manifestPath, JSON.stringify({ version: '2.1.0', platforms }));
       const events = join(root, 'events.jsonl');
@@ -141,8 +141,8 @@ test('finalization preserves the draft tag and publishes only verified packages;
         assert.ok(!recorded.includes('upload') && !recorded.includes('publish') && !recorded.includes('finalize'));
       } else {
         assert.equal(result.status, 0, result.stderr);
-        assert.deepEqual(recorded, ['download', 'download', 'upload', ...(publish ? ['publish', 'public_package', 'public_package'] : ['finalize'])]);
-        assert.ok(JSON.parse(readFileSync(manifestPath)).notes.includes('Ghi và phát macro nhanh hơn.'));
+        assert.deepEqual(recorded, ['download', 'download', 'download', 'upload', ...(publish ? ['publish', 'public_package', 'public_package', 'public_package'] : ['finalize'])]);
+        assert.ok(JSON.parse(readFileSync(manifestPath)).notes.includes('Mở thư mục nhanh hơn.'));
       }
     } finally { rmSync(root, { recursive: true, force: true }); }
   }

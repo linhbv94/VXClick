@@ -32,7 +32,7 @@ for (const entry of Object.values(manifest.platforms ?? {})) {
   assert.ok(asset && asset.size > 0, 'Updater asset is missing from release');
   entry.url = `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(asset.name)}`;
 }
-for (const platform of ['darwin-aarch64', 'darwin-x86_64']) {
+for (const platform of ['darwin-aarch64', 'darwin-x86_64', 'windows-x86_64']) {
   const entry = manifest.platforms?.[platform];
   assert.ok(entry, `Missing platform ${platform}`);
   assert.ok(typeof entry.signature === 'string' && entry.signature.trim(), `Missing signature ${platform}`);
@@ -41,11 +41,12 @@ for (const platform of ['darwin-aarch64', 'darwin-x86_64']) {
   assert.ok(url.pathname.startsWith(`/${repo}/releases/download/${tag}/`), `Package must point to this version: ${platform}`);
   const assetName = decodeURIComponent(url.pathname.split('/').at(-1));
   assert.ok(release.assets.some((asset) => asset.name === assetName && asset.size > 0), `Missing release asset ${assetName}`);
-  assert.ok(assetName.endsWith('.app.tar.gz'), `Wrong installer format: ${platform}`);
+  assert.ok(platform.startsWith('windows') ? assetName.endsWith('.exe') : assetName.endsWith('.app.tar.gz'), `Wrong installer format: ${platform}`);
 }
 assert.ok(release.assets.filter((asset) => asset.name.endsWith('.dmg')).length >= 2, 'Missing first-install macOS DMGs');
+assert.ok(release.assets.some((asset) => asset.name.endsWith('.exe') && asset.size > 0), 'Missing Windows installer');
 if (process.env.RELEASE_STRICT_LAYOUT === 'true') validateAssetLayout(config, manifest, release.assets);
 writeFileSync(process.argv[2], JSON.stringify(manifest, null, 2) + '\n');
-const summary = `### ${config.productName} ${tag}\n\nManifest and package metadata validated for macOS (Apple Silicon + Intel). Metadata checks do not prove signatures; the finalization step verifies them separately.\n\n[Open release](https://github.com/${repo}/releases)\n`;
+const summary = `### ${config.productName} ${tag}\n\nManifest and package metadata validated for Windows x64 and macOS (Apple Silicon + Intel). Metadata checks do not prove signatures; the finalization step verifies them separately.\n\n[Open release](https://github.com/${repo}/releases)\n`;
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
-console.log('Manifest valid for macOS Apple Silicon and macOS Intel. Release remains a draft.');
+console.log('Manifest valid for Windows x64, macOS Apple Silicon and macOS Intel. Release remains a draft.');

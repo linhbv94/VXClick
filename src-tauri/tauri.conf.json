@@ -58,7 +58,10 @@
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1MkVGRDQ3RUNGQTc0QjEKUldTeGRQcnNSLzB1TmY0T2NQTGF4bXhqcjFiT2h4dUdrZ3NZMTN0SXlWZjF0UUxXd25xNm84Ri8K",
       "endpoints": [
         "https://github.com/linhbv94/VXClick/releases/latest/download/latest.json"
-      ]
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

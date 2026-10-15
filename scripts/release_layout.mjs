@@ -11,6 +11,7 @@ export function assetPrefix(config) {
 export function releaseAssets(config) {
   const prefix = `${assetPrefix(config)}_${config.version}`;
   return {
+    'windows-x86_64': `${prefix}_windows_x64_setup.exe`,
     'darwin-aarch64': `${prefix}_macos_silicon.app.tar.gz`,
     'darwin-x86_64': `${prefix}_macos_intel.app.tar.gz`,
     siliconInstaller: `${prefix}_macos_silicon.dmg`,
@@ -21,17 +22,19 @@ export function releaseAssets(config) {
 export function validateAssetLayout(config, manifest, assets) {
   const names = releaseAssets(config);
   const expected = ['latest.json', ...Object.values(names)];
-  assert.equal(assets.length, expected.length, 'Release must contain exactly five uploaded assets (Mac-only profile)');
+  assert.equal(assets.length, expected.length, 'Release must contain exactly six uploaded assets');
   for (const name of expected) {
     assert.equal(assets.filter((asset) => asset.name === name && asset.size > 0).length, 1, `Missing or duplicate asset: ${name}`);
   }
   const supported = {
+    'windows-x86_64': names['windows-x86_64'],
+    'windows-x86_64-nsis': names['windows-x86_64'],
     'darwin-aarch64': names['darwin-aarch64'],
     'darwin-aarch64-app': names['darwin-aarch64'],
     'darwin-x86_64': names['darwin-x86_64'],
     'darwin-x86_64-app': names['darwin-x86_64'],
   };
-  for (const platform of ['darwin-aarch64', 'darwin-x86_64']) {
+  for (const platform of ['windows-x86_64', 'darwin-aarch64', 'darwin-x86_64']) {
     assert.ok(manifest.platforms?.[platform], `Missing platform: ${platform}`);
   }
   for (const [platform, entry] of Object.entries(manifest.platforms)) {
@@ -48,9 +51,10 @@ export function releaseNotes(config, repo, tag, notesRoot = 'docs/release_notes'
   assert.ok(changes && !/\[(?:TODO|\.\.\.)\]/i.test(changes), 'Write end-user release notes before creating the tag');
   const names = releaseAssets(config);
   const url = (name) => `https://github.com/${repo}/releases/download/${tag}/${name}`;
+  const windowsUrl = url(names['windows-x86_64']);
   const siliconUrl = url(names.siliconInstaller);
   const intelUrl = url(names.intelInstaller);
-  return `${changes}\n\n**Tải ứng dụng cho macOS**\n\n- [macOS Apple Silicon (dòng chip M)](${siliconUrl})\n- [macOS Intel](${intelUrl})\n\n**Cài đặt:** Mở file .dmg đã tải về, kéo biểu tượng **${config.productName}** vào thư mục **Applications**, sau đó mở ứng dụng từ Applications. Do ứng dụng sử dụng cơ chế bảo vệ macOS, trong lần đầu khởi chạy, vui lòng cấp quyền Accessibility (Trợ năng) khi được yêu cầu để ghi và phát lại thao tác.\n\n**Đã cài ứng dụng?** Mở app → Cài đặt → Kiểm tra cập nhật.\n`;
+  return `${changes}\n\n**Tải ứng dụng**\n\n- [Windows 64-bit](${windowsUrl})\n- [macOS Apple Silicon (dòng chip M)](${siliconUrl})\n- [macOS Intel](${intelUrl})\n\n**Cài đặt:** Windows mở bộ cài setup.exe để cài đặt; macOS mở file .dmg đã tải về, kéo biểu tượng **${config.productName}** vào thư mục **Applications**, sau đó mở ứng dụng từ Applications và cấp quyền Accessibility khi được yêu cầu.\n\n**Đã cài ứng dụng?** Mở app → Cài đặt → Kiểm tra cập nhật.\n`;
 }
 
 export function assertNewerVersion(version, previousTag) {

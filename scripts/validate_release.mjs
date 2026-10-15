@@ -24,9 +24,11 @@ assert.equal(appPackage?.match(/^version\s*=\s*"([^"]+)"/m)?.[1], pkg.version, '
 const publicKey = Buffer.from(config.plugins?.updater?.pubkey ?? '', 'base64').toString('utf8').trim().split('\n').at(-1);
 assert.equal(Buffer.from(publicKey ?? '', 'base64').length, 42, 'Invalid updater public key');
 assert.equal(config.bundle?.createUpdaterArtifacts, true);
-// Free-distribution profile for macOS
+// Free-distribution profile for macOS and Windows
 assert.equal(config.bundle.macOS?.signingIdentity, '-');
+assert.equal(config.bundle.windows?.nsis?.installMode, 'currentUser');
+assert.equal(config.plugins.updater.windows?.installMode, 'passive');
 if (process.env.GITHUB_REPOSITORY) {
   assert.deepEqual(config.plugins.updater.endpoints, [`https://github.com/${process.env.GITHUB_REPOSITORY}/releases/latest/download/latest.json`]);
 }
-console.log(`${config.productName} ${tag}: versions and Mac distribution profile valid.`);
+console.log(`${config.productName} ${tag}: versions and Windows+Mac distribution profile valid.`);
