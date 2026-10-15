@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-15",
+  "verdict": "blocked",
+  "scope": "Track C VXClick macOS final QA; no release; Windows dummy excluded",
+  "checks": {
+    "frontend_build": {
+      "exit_code": 0
+    },
+    "rust_lib_tests": {
+      "exit_code": 0,
+      "passed": 6,
+      "note": "Includes Windows dummy compiled on macOS; not Windows runtime"
+    },
+    "compressor_regressions": {
+      "passed": 4,
+      "failed": 2,
+      "expected_failure_exit_code": 101
+    },
+    "codesign_verify_deep_strict": {
+      "exit_code": 1,
+      "error": "CSSMERR_TP_NOT_TRUSTED",
+      "note": "Trust failure; does not establish corrupted resources"
+    },
+    "native_ui": "App opened; idle Rec enabled/Play disabled; Settings opened and closed; no settings changed; no capture/injection executed"
+  },
+  "sha256": {
+    "src-tauri/src/platform/macos.rs": "9482a4e73d7b7932f06a0ec2b7cfac3aca8b4484e29c7aa3fcbbe9d97a5a3409",
+    "src-tauri/src/engine/mod.rs": "93753d6b9566a2009715cdcd5e6352e8009de1e9d66f8182efa4b85b0ef4bdc3",
+    "src-tauri/src/compressor.rs": "0b383cf3c67b56951ab4593998aacea68affe12ad409d309d6dd64f95d826b97",
+    "src-tauri/src/types.rs": "4fddb62d2b3600763ffd71df12df4bad3b615718795399ebc665aae1694d5ad5",
+    "src/services/tauri_bridge.ts": "6face3812c0c58eb10a8f615f5dfe525afe695059590d559335a2563cabf95ea",
+    "scripts/build_signed_macos.mjs": "3c772ee37e50b703c5c75fb5ae494ec3c9999646c21a56457ff054d42e3eb71a",
+    "src-tauri/target/release/bundle/macos/VXClick.app/Contents/MacOS/vxclick": "f10ccdf7b62c08e28cac0c1a6ad451b3c07cbbcd9a10e6ad11635480cfa77f24"
+  }
+}

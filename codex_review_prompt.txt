@@ -1,0 +1,16 @@
+Vai trò: Chỉ tham vấn/review chỉ đọc; không sửa nguồn; không gọi agent khác.
+Tuân thủ AGENTS.md, tiếng Việt chuyên nghiệp, UTF-8, snake_case và tuyệt đối không dùng LaTeX.
+
+Bối cảnh:
+Dự án VXClick (macOS desktop widget 310px x 38px, Tauri v2 + React 19 + Tailwind v4).
+User đã chạy thử bản bundle .app và gửi ảnh chụp màn hình kèm phản hồi 3 lỗi UI/UX:
+1. "vẫn có scroll": Menu Setting khi mở ra bị thanh cuộn và bị cắt mất phần dưới (nút About bị cắt nửa, nút Ủng hộ tác giả bị mất hẳn).
+   - Phân tích nguyên nhân vì sao cửa sổ Tauri không giãn nở đủ chiều cao tự nhiên hoặc bị scroll/clipping trên macOS (kiểm tra tauri.conf.json resizable, setSize/setPosition, CSS overflow, App.tsx).
+2. "có drag handle nhưng có drag được đâu":
+   - Biểu tượng tay nắm GripVertical không kéo được cửa sổ trên macOS. Phân tích nguyên nhân (data-tauri-drag-region, CSS -webkit-app-region vs onMouseDown gọi appWindow.startDragging()).
+3. "lúc mở setting, toàn bộ right corner trông rất xấu":
+   - Quan sát ảnh chụp màn hình: góc trên bên phải (và các góc) của MainBar và Setting Popover trông thô, viền/nền đen lộ ra ngoài viền bo tròn, hoặc 2 khối bị rời rạc tạo khe hở kỳ quặc. Phân tích cách thiết kế container thống nhất (seamless unified container hoặc xử lý transparent window & rounded corners) để khi mở Setting, toàn bộ giao diện tạo thành một khối kính mờ nguyên vẹn, bo góc hoàn hảo và sắc nét.
+
+Yêu cầu output:
+- Nhận định chính xác nguyên nhân kỹ thuật của từng lỗi trong mã nguồn hiện tại.
+- Đề xuất phương án sửa đổi chi tiết kèm đoạn code mẫu cụ thể để Anti áp dụng vào frontend và cấu hình Tauri v2.
