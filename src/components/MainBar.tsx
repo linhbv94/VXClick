@@ -227,7 +227,7 @@ export const MainBar: React.FC<MainBarProps> = ({
         >
           <Settings2 className="w-3.5 h-3.5" />
           {hasUpdateAvailable && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+            <span className="pointer-events-none absolute -top-0.5 -right-0.5 flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500 ring-1.5 ring-white dark:ring-slate-900" />
             </span>

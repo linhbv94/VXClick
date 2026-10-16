@@ -353,79 +353,124 @@ export async function bridgeStartDragging(): Promise<void> {
 }
 
 let accumulatedUpShift = 0;
+let syncQueue: Promise<void> = Promise.resolve();
+let lastSyncedH = 0;
+let lastSyncedIsMainBar: boolean | null = null;
 
-export async function bridgeSyncWindowHeight(
+export async function bridgeInitWindowConstraints(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const { currentMonitor } = await import('@tauri-apps/api/window');
+    const monitor = await currentMonitor();
+    const scale = monitor?.scaleFactor || window.devicePixelRatio || 1;
+    const workArea = monitor?.workArea;
+    const workAreaHeight = workArea
+      ? workArea.size.height / scale
+      : (monitor ? monitor.size.height / scale : window.screen.availHeight);
+    const maxAvailableH = Math.max(200, Math.floor(workAreaHeight - 30));
+    const contentMaxH = Math.max(160, Math.min(520, maxAvailableH - 38));
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--widget-content-max-h', `${contentMaxH}px`);
+    }
+  } catch (err) {
+    console.warn('Lỗi khởi tạo giới hạn cửa sổ:', err);
+  }
+}
+
+async function doSyncWindowHeight(
   targetHeight: number,
   isMainBar: boolean
 ): Promise<void> {
-  if (!isTauri()) return;
+  const { getCurrentWindow, currentMonitor, LogicalPosition, LogicalSize } =
+    await import('@tauri-apps/api/window');
+  const win = getCurrentWindow();
+  const monitor = await currentMonitor();
+  const scale = monitor?.scaleFactor || window.devicePixelRatio || 1;
 
-  try {
-    const { getCurrentWindow, currentMonitor, LogicalPosition, LogicalSize } =
-      await import('@tauri-apps/api/window');
-    const win = getCurrentWindow();
-    const monitor = await currentMonitor();
-    const scale = monitor?.scaleFactor || window.devicePixelRatio || 1;
+  const outerPos = await win.outerPosition();
+  const innerSize = await win.innerSize();
+  const currentLogicalY = outerPos.y / scale;
+  const currentLogicalX = outerPos.x / scale;
+  const currentLogicalHeight = innerSize.height / scale;
 
-    const outerPos = await win.outerPosition();
-    const outerSize = await win.outerSize();
-    const currentLogicalY = outerPos.y / scale;
-    const currentLogicalX = outerPos.x / scale;
-    const currentLogicalHeight = outerSize.height / scale;
+  if (isMainBar) {
+    // Đang ở chế độ thanh MainBar (cao 38px hoặc 62px nếu có playback mini status bar)
+    if (accumulatedUpShift > 0) {
+      const restoredY = currentLogicalY + accumulatedUpShift;
+      accumulatedUpShift = 0;
+      await win.setPosition(new LogicalPosition(currentLogicalX, restoredY));
+    }
+    const finalH = Math.max(38, targetHeight);
+    await win.setSize(new LogicalSize(310, finalH));
+    return;
+  }
 
-    if (isMainBar) {
-      // Đang ở chế độ thanh MainBar (cao 38px hoặc 62px nếu có playback mini status bar)
-      if (accumulatedUpShift > 0) {
-        const restoredY = currentLogicalY + accumulatedUpShift;
-        accumulatedUpShift = 0;
-        await win.setPosition(new LogicalPosition(currentLogicalX, restoredY));
-      }
-      const finalH = Math.max(38, targetHeight);
-      await win.setSize(new LogicalSize(310, finalH));
+  // Đang ở trạng thái mở rộng (Settings / About / Support)
+  const workArea = monitor?.workArea;
+  const workAreaHeight = workArea
+    ? workArea.size.height / scale
+    : (monitor ? monitor.size.height / scale : window.screen.availHeight);
+  const workAreaY = workArea
+    ? workArea.position.y / scale
+    : (monitor ? monitor.position.y / scale : 0);
+  const maxBottom = workAreaY + workAreaHeight - 15;
+
+  // Giới hạn targetHeight không vượt quá chiều cao khả dụng trên màn hình
+  const maxAvailableH = Math.max(200, Math.floor(workAreaHeight - 30));
+  const contentMaxH = Math.max(160, Math.min(520, maxAvailableH - 38));
+  if (typeof document !== 'undefined') {
+    document.documentElement.style.setProperty('--widget-content-max-h', `${contentMaxH}px`);
+  }
+
+  const safeTargetHeight = Math.min(targetHeight, maxAvailableH);
+  const heightDiff = safeTargetHeight - currentLogicalHeight;
+
+  if (accumulatedUpShift > 0) {
+    // Đang trong chế độ expand-up từ trước (ví dụ chuyển từ Settings sang Support)
+    if (Math.abs(heightDiff) >= 1) {
+      const newY = currentLogicalY - heightDiff;
+      accumulatedUpShift += heightDiff;
+      await win.setPosition(
+        new LogicalPosition(currentLogicalX, Math.max(workAreaY + 10, newY))
+      );
+      await win.setSize(new LogicalSize(310, safeTargetHeight));
+    }
+  } else {
+    // Kiểm tra xem nếu nở xuống dưới thì có chạm đáy không
+    const projectedBottom = currentLogicalY + safeTargetHeight;
+    if (projectedBottom > maxBottom) {
+      // Cần nở lên trên
+      const shift = safeTargetHeight - currentLogicalHeight;
+      const newY = Math.max(workAreaY + 10, currentLogicalY - shift);
+      accumulatedUpShift = currentLogicalY - newY;
+      await win.setPosition(new LogicalPosition(currentLogicalX, newY));
+      await win.setSize(new LogicalSize(310, safeTargetHeight));
+    } else {
+      // Nở xuống bình thường
+      accumulatedUpShift = 0;
+      await win.setSize(new LogicalSize(310, safeTargetHeight));
+    }
+  }
+}
+
+export function bridgeSyncWindowHeight(
+  targetHeight: number,
+  isMainBar: boolean
+): Promise<void> {
+  if (!isTauri()) return Promise.resolve();
+
+  syncQueue = syncQueue.then(async () => {
+    if (targetHeight === lastSyncedH && isMainBar === lastSyncedIsMainBar) {
       return;
     }
-
-    // Đang ở trạng thái mở rộng (Settings / About / Support)
-    const monitorHeight = monitor ? monitor.size.height / scale : window.screen.availHeight;
-    const monitorY = monitor ? monitor.position.y / scale : 0;
-    const dockMargin = 70; // Tránh Dock macOS và mép dưới màn hình
-    const maxBottom = monitorY + monitorHeight - dockMargin;
-
-    // Giới hạn targetHeight không vượt quá chiều cao khả dụng trên màn hình
-    const maxAvailableH = Math.max(200, Math.floor(monitorHeight - dockMargin - 25));
-    const safeTargetHeight = Math.min(targetHeight, maxAvailableH);
-
-    const heightDiff = safeTargetHeight - currentLogicalHeight;
-
-    if (accumulatedUpShift > 0) {
-      // Đang trong chế độ expand-up từ trước (ví dụ chuyển từ Settings sang Support)
-      if (Math.abs(heightDiff) >= 1) {
-        const newY = currentLogicalY - heightDiff;
-        accumulatedUpShift += heightDiff;
-        await win.setPosition(
-            new LogicalPosition(currentLogicalX, Math.max(monitorY + 25, newY))
-        );
-        await win.setSize(new LogicalSize(310, safeTargetHeight));
-      }
-    } else {
-      // Kiểm tra xem nếu nở xuống dưới thì có chạm đáy không
-      const projectedBottom = currentLogicalY + safeTargetHeight;
-      if (projectedBottom > maxBottom) {
-        // Cần nở lên trên
-        const shift = safeTargetHeight - 38;
-        const newY = Math.max(monitorY + 25, currentLogicalY - shift);
-        accumulatedUpShift = currentLogicalY - newY;
-        await win.setPosition(new LogicalPosition(currentLogicalX, newY));
-        await win.setSize(new LogicalSize(310, safeTargetHeight));
-      } else {
-        // Nở xuống bình thường
-        accumulatedUpShift = 0;
-        await win.setSize(new LogicalSize(310, safeTargetHeight));
-      }
-    }
-  } catch (err) {
+    await doSyncWindowHeight(targetHeight, isMainBar);
+    lastSyncedH = targetHeight;
+    lastSyncedIsMainBar = isMainBar;
+  }).catch((err) => {
     console.warn('Lỗi đồng bộ kích thước cửa sổ:', err);
-  }
+  });
+
+  return syncQueue;
 }
 
 export async function bridgeExpandWindow(targetHeight: number): Promise<'up' | 'down'> {

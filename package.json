@@ -1,6 +1,6 @@
 {
   "name": "vxclick",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "VXClick — Ultra-compact Macro Recorder & Automation Engine",
   "main": "index.js",
   "type": "module",

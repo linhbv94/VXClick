@@ -77,7 +77,7 @@ export const TRANSLATIONS = {
     // About Dialog (Phong cách vx*)
     about_header: 'Giới thiệu VXClick',
     app_name: 'VXClick Desktop',
-    app_version: 'v1.0.2',
+    app_version: 'v1.0.3',
     app_desc: 'Tiện ích ghi và phát lại thao tác chuột & bàn phím tốc độ cao, thiết kế siêu nhỏ gọn tối ưu cho quy trình tự động hóa cá nhân.',
     highlights_title: 'Điểm nổi bật của ứng dụng:',
     highlight_1: 'Thao tác nhanh 1 chạm: Phím tắt toàn cục ⌥⇧⌘R (Ghi/Dừng) • ⌥⇧⌘P (Phát lại) • ESC (Ngắt khẩn cấp).',
@@ -186,7 +186,7 @@ export const TRANSLATIONS = {
     // About Dialog (vx* style)
     about_header: 'About VXClick',
     app_name: 'VXClick Desktop',
-    app_version: 'v1.0.2',
+    app_version: 'v1.0.3',
     app_desc: 'High-speed mouse and keyboard macro automation utility with an ultra-compact footprint designed for effortless personal workflows.',
     highlights_title: 'Key Highlights:',
     highlight_1: 'One-touch shortcuts: Global hotkeys ⌥⇧⌘R (Record/Stop) • ⌥⇧⌘P (Play) • ESC (Emergency Stop).',

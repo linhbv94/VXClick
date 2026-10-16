@@ -348,3 +348,10 @@ Nằm ở vị trí Mục 7 ngay trước cụm About/Support, thiết kế bo g
   7. `installed`: Dòng "Đã cài đặt xong. Khởi động lại để áp dụng." kèm nút CTA màu Emerald "Khởi động lại ngay".
   8. `error`: Icon `AlertCircle` cảnh báo kèm nút "Thử lại".
   9. `disabled`: Chữ mờ ghi chú "Cập nhật khả dụng trên bản cài đặt chính thức." khi chạy môi trường dev/không phải cửa sổ chính.
+
+### 10.3. Cơ chế Đồng bộ Kích thước Cửa sổ & Chống Deadlock Khi Mở rộng
+- **Tránh deadlock viewport `100vh`:** Cửa sổ nổi khởi tạo ở chiều cao 38px, do đó thuộc tính CSS `100vh` bên trong webview chỉ bằng 38px. Tuyệt đối không dùng `calc(100vh - ...)` để giới hạn `.widget_content`.
+- **Giới hạn nội dung qua CSS Variable:** `.widget_content` sử dụng `max-height: var(--widget-content-max-h, 520px)` và `overflow-y: auto`.
+- **Tính toán ngân sách chiều cao khả dụng:** `bridgeSyncWindowHeight` và `bridgeInitWindowConstraints` truy vấn `monitor.workArea` (trừ đi chiều cao Taskbar/Dock và 38px của thanh chính), cập nhật `--widget-content-max-h` trên `document.documentElement` để nội dung cuộn mượt mà khi màn hình hiển thị nhỏ mà không gây kẹt kích thước.
+- **Tuần tự hóa (Serialization):** Toàn bộ thao tác `win.setSize` và `win.setPosition` được đưa vào hàng đợi tuần tự Promise, loại bỏ triệt để hiện tượng race condition khi người dùng thao tác đóng/mở nhanh.
+

@@ -26,6 +26,7 @@ import {
   bridgeSetSettings,
   bridgeSetAlwaysOnTop,
   bridgeSyncWindowHeight,
+  bridgeInitWindowConstraints,
   bridgeStartDragging,
   bridgeMinimizeWindow,
   bridgeCloseWindow,
@@ -141,6 +142,8 @@ export function App() {
 
   // Khởi tạo cấu hình và đăng ký lắng nghe sự kiện từ backend / mock
   useEffect(() => {
+    bridgeInitWindowConstraints();
+
     bridgeGetSettings()
       .then((s) => setSettings(s))
       .catch((e) => console.warn('Lỗi đọc settings:', e));

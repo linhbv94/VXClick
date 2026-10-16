@@ -56,7 +56,7 @@
 .widget_content {
   width: 100%;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
-  max-height: min(520px, calc(100vh - 80px));
+  max-height: var(--widget-content-max-h, 520px);
   overflow-y: auto;
   overflow-x: hidden;
 }
