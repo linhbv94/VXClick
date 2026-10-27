@@ -1,0 +1,176 @@
+{
+  "version": "1.0.5",
+  "source_commit": "8595c6ac3d58e6a73fe3e4c6e9b462186f207dc1",
+  "build_run_id": 40453847869,
+  "state": "public_verified",
+  "sdk_baseline": "27.0",
+  "mac_runner": "xcode-27 (standard)",
+  "intel_cross_build": true,
+  "native_gui": true,
+  "hardware_click_test": false,
+  "hardware_test_skipped_by_user": true,
+  "updater_old_to_new": false,
+  "local_rust_pass": 22,
+  "signer_fingerprint": "fe024021592c718a39ad70b76d2edc5da0cd6b70",
+  "signer_uploaded_with_explicit_user_approval": true,
+  "native_ui": [
+    "permission guard",
+    "settings layout",
+    "scroll to lower settings",
+    "settings unchanged"
+  ],
+  "native_bezel_measurement": "obscured by screen sharing indicator",
+  "backend_fixes": [
+    "input bounds",
+    "idle-only start",
+    "monotonic session ID",
+    "Windows dummy rejects engine commands"
+  ],
+  "native_ui_snapshot_version": "1.0.4",
+  "windows_manifest_fix": "CommonControls v6 for all targets",
+  "pkcs12_import_test": "PASS isolated keychain before upload",
+  "release_id": 425056706,
+  "release_url": "https://github.com/linhbv94/VXClick/releases/tag/v1.0.5",
+  "public_manifest_exact": true,
+  "public_assets": [
+    {
+      "name": "latest.json",
+      "status": 200,
+      "size": 4893,
+      "sha256": "f1faf502e0513b2186ca1f6efb241e7dd8b2fa020a636357b5117639545d38c4"
+    },
+    {
+      "name": "vxclick_1.0.5_macos_intel.app.tar.gz",
+      "status": 200,
+      "size": 5885066,
+      "sha256": "86f64cce24089d72aabd493e00c7e2f9e1edbee33090e03a50fcfa7770d32c6a"
+    },
+    {
+      "name": "vxclick_1.0.5_macos_intel.dmg",
+      "status": 200,
+      "size": 6432876,
+      "sha256": "b1ea8dd02898291c2e7eeb57742390cb1f8f4739569b31113df24a7ec881ff4e"
+    },
+    {
+      "name": "vxclick_1.0.5_macos_silicon.app.tar.gz",
+      "status": 200,
+      "size": 5600019,
+      "sha256": "4b0cbaa658f7579e629331df8c5a1889c5f5867c4799d0de894adc0be0e27848"
+    },
+    {
+      "name": "vxclick_1.0.5_macos_silicon.dmg",
+      "status": 200,
+      "size": 6104325,
+      "sha256": "c6bdce288ee657f51c3c5bb6c608a822718b20896858f689ffd58f075b827bc9"
+    },
+    {
+      "name": "vxclick_1.0.5_windows_x64_setup.exe",
+      "status": 200,
+      "size": 3552144,
+      "sha256": "c0864f4a3de2a3324b02b39089b4ff62baeff27f3d99b7189f41e62df5218681"
+    }
+  ],
+  "publish_run_id": 40474385241,
+  "signature_checks": {
+    "version": "1.0.5",
+    "verified": [
+      {
+        "platform": "windows-x86_64",
+        "name": "vxclick_1.0.5_windows_x64_setup.exe",
+        "size": 3552144,
+        "sha256": "c0864f4a3de2a3324b02b39089b4ff62baeff27f3d99b7189f41e62df5218681",
+        "signature": true,
+        "tamper_rejected": true
+      },
+      {
+        "platform": "windows-x86_64-nsis",
+        "name": "vxclick_1.0.5_windows_x64_setup.exe",
+        "size": 3552144,
+        "sha256": "c0864f4a3de2a3324b02b39089b4ff62baeff27f3d99b7189f41e62df5218681",
+        "signature": true,
+        "tamper_rejected": true
+      },
+      {
+        "platform": "darwin-aarch64",
+        "name": "vxclick_1.0.5_macos_silicon.app.tar.gz",
+        "size": 5600019,
+        "sha256": "4b0cbaa658f7579e629331df8c5a1889c5f5867c4799d0de894adc0be0e27848",
+        "signature": true,
+        "tamper_rejected": true
+      },
+      {
+        "platform": "darwin-aarch64-app",
+        "name": "vxclick_1.0.5_macos_silicon.app.tar.gz",
+        "size": 5600019,
+        "sha256": "4b0cbaa658f7579e629331df8c5a1889c5f5867c4799d0de894adc0be0e27848",
+        "signature": true,
+        "tamper_rejected": true
+      },
+      {
+        "platform": "darwin-x86_64",
+        "name": "vxclick_1.0.5_macos_intel.app.tar.gz",
+        "size": 5885066,
+        "sha256": "86f64cce24089d72aabd493e00c7e2f9e1edbee33090e03a50fcfa7770d32c6a",
+        "signature": true,
+        "tamper_rejected": true
+      },
+      {
+        "platform": "darwin-x86_64-app",
+        "name": "vxclick_1.0.5_macos_intel.app.tar.gz",
+        "size": 5885066,
+        "sha256": "86f64cce24089d72aabd493e00c7e2f9e1edbee33090e03a50fcfa7770d32c6a",
+        "signature": true,
+        "tamper_rejected": true
+      }
+    ]
+  },
+  "package_icons": [
+    {
+      "platform": "windows_x64",
+      "executable": "vxclick.exe",
+      "pe_machine": "AMD64",
+      "version_resource_contains": "1.0.5",
+      "icon_payloads": 7,
+      "icon_matches": true,
+      "ico_sha256": "f6dc9dc99b8be88525240bafad0efbf8dbf3b0ba306773af4b8a9c2f9a869f9b"
+    },
+    {
+      "platform": "macos_silicon",
+      "version": "1.0.5",
+      "identifier": "com.vxclick.desktop",
+      "architecture": "0x100000c",
+      "sdk": "27.0",
+      "icns_sha256": "e8a3e5d476cfe3546f27dee200de81f0ee7db9e7c4ae64a6aad61f28daded8eb",
+      "icon_matches": true,
+      "strict_codesign": true
+    },
+    {
+      "platform": "macos_intel",
+      "version": "1.0.5",
+      "identifier": "com.vxclick.desktop",
+      "architecture": "0x1000007",
+      "sdk": "27.0",
+      "icns_sha256": "e8a3e5d476cfe3546f27dee200de81f0ee7db9e7c4ae64a6aad61f28daded8eb",
+      "icon_matches": true,
+      "strict_codesign": true
+    }
+  ],
+  "dmg_checks": [
+    {
+      "platform": "macos_silicon",
+      "checksum": "VALID",
+      "dmg_icns_matches": true,
+      "identifier": "com.vxclick.desktop",
+      "version": "1.0.5",
+      "strict_codesign": true
+    },
+    {
+      "platform": "macos_intel",
+      "checksum": "VALID",
+      "dmg_icns_matches": true,
+      "identifier": "com.vxclick.desktop",
+      "version": "1.0.5",
+      "strict_codesign": true
+    }
+  ]
+}

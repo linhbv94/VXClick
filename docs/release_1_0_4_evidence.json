@@ -1,0 +1,29 @@
+{
+  "version": "1.0.4",
+  "source_commit": "f17a433c39e226fe57c6b19517d8021fb07a7d02",
+  "build_run_id": 40452520196,
+  "state": "failed_not_published",
+  "sdk_baseline": "27.0",
+  "mac_runner": "xcode-27 (standard)",
+  "intel_cross_build": true,
+  "native_gui": true,
+  "hardware_click_test": false,
+  "hardware_test_skipped_by_user": true,
+  "updater_old_to_new": false,
+  "local_rust_pass": 22,
+  "signer_fingerprint": "fe024021592c718a39ad70b76d2edc5da0cd6b70",
+  "signer_uploaded_with_explicit_user_approval": true,
+  "native_ui": [
+    "permission guard",
+    "settings layout",
+    "scroll to lower settings",
+    "settings unchanged"
+  ],
+  "native_bezel_measurement": "obscured by screen sharing indicator",
+  "backend_fixes": [
+    "input bounds",
+    "idle-only start",
+    "monotonic session ID",
+    "Windows dummy rejects engine commands"
+  ]
+}

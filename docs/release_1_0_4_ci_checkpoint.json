@@ -1,0 +1,41 @@
+{
+  "status": "completed",
+  "conclusion": "failure",
+  "head_sha": "f17a433c39e226fe57c6b19517d8021fb07a7d02",
+  "url": "https://github.com/linhbv94/VXClick/actions/runs/40452520196",
+  "jobs": [
+    {
+      "name": "prepare",
+      "status": "completed",
+      "conclusion": "success",
+      "active": []
+    },
+    {
+      "name": "build (xcode-27, aarch64-apple-darwin, app,dmg, macos_silicon)",
+      "status": "completed",
+      "conclusion": "failure",
+      "active": []
+    },
+    {
+      "name": "build (xcode-27, x86_64-apple-darwin, app,dmg, macos_intel)",
+      "status": "completed",
+      "conclusion": "failure",
+      "active": []
+    },
+    {
+      "name": "build (windows-2022, x86_64-pc-windows-msvc, nsis, windows_x64)",
+      "status": "completed",
+      "conclusion": "failure",
+      "active": []
+    },
+    {
+      "name": "validate",
+      "status": "completed",
+      "conclusion": "skipped",
+      "active": []
+    }
+  ],
+  "repo": "linhbv94/VXClick",
+  "run_id": 40452520196,
+  "observed_at_utc": "2026-10-27T05:05:02.181540+00:00"
+}
