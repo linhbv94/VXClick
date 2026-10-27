@@ -67,7 +67,7 @@ User                      UI Shell (WebView)             Rust Core Backend      
 ### 2.2. Quy trình 2: Ghi Chuỗi Thao tác (Macro Recording Lifecycle)
 
 ```text
-User                      UI Shell (4-Button)            Rust Core (Capture Thread)     OS Hardware Hooks
+User                      UI Shell (5-Button)            Rust Core (Capture Thread)     OS Hardware Hooks
  │                                │                              │                                 │
  │── Nhấn ⌥⇧⌘R / Ctrl+Alt+Shift+R►│                              │                                 │
  │   (hoặc click [ ● Rec ])       │── start_recording() ────────►│                                 │
@@ -168,6 +168,38 @@ User                      Hardware Keyboard              Failsafe Thread (Rust) 
  │                                │                              │                  Phát Event về UI:
  │                                │                              │                  emergency_stopped
  │                                │                              │                  FSM về IDLE_READY
+```
+
+---
+
+### 2.4. Quy trình 4: Vòng đời Tự Động Nhấp Chuột (Auto Click Lifecycle)
+
+```text
+User                      UI Shell (MainBar/MiniBar)     Rust Core Engine               OS Event Tap/SendInput
+ │                                │                              │                                 │
+ │── Nhấn ⌥⇧⌘C / Ctrl+Alt+Shift+C►│                              │                                 │
+ │   (hoặc click [ 🖱 Auto ])     │── start_autoclick(config) ──►│                                 │
+ │                                │                              │── Validate SystemState:         │
+ │                                │                              │   Từ chối nếu Recording/Playing │
+ │                                │                              │── Khởi tạo luồng nhấp nền       │
+ │                                │                              │── FSM -> AUTOCLICKING           │
+ │◄─ Đổi nút Auto sang màu Amber, │◄── emit(state_changed) ──────│                                 │
+ │   mở rộng Mini Bar (62px)      │                              │                                 │
+ │                                │                              │── Loop:                         │
+ │                                │                              │   1. get_current_mouse_loc() ──►│
+ │                                │                              │   2. Inject MouseDown ─────────►│
+ │                                │                              │   3. sleep 10ms                │
+ │                                │                              │   4. Inject MouseUp ───────────►│
+ │                                │                              │   5. Emit progress (throttled)  │
+ │                                │                              │   6. Condvar wait (interval_ms) │
+ │                                │                              │                                 │
+ │── Bấm lại [ 🖱 Auto ] / ⌥⇧⌘C ──►│                              │                                 │
+ │   (hoặc phím ESC / hết lần)    │── stop_autoclick() ─────────►│                                 │
+ │                                │                              │── Đánh thức Condvar             │
+ │                                │                              │── Xả sạch trạng thái chuột      │
+ │                                │                              │── FSM -> IDLE_READY / EMPTY     │
+ │◄─ Mini Bar thông báo đã dừng,  │◄── emit(state_changed) ──────│                                 │
+ │   sau 1.2s thu gọn về 38px     │                              │                                 │
 ```
 
 ---

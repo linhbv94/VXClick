@@ -7,6 +7,7 @@ export type SystemState =
   | 'RECORDING'
   | 'IDLE_READY'
   | 'PLAYING'
+  | 'AUTOCLICKING'
   | 'EMERGENCY_STOPPED';
 
 export type MouseBtn = 'Left' | 'Right' | 'Middle' | 'X1' | 'X2';
@@ -49,11 +50,22 @@ export interface SettingsState {
   always_on_top: boolean;
   theme: ThemeMode;
   language: LanguageMode;
+  autoclick_interval_ms: number;
+  autoclick_button: MouseBtn;
+  autoclick_until_stopped: boolean;
+  autoclick_repeat_count: number;
 }
 
 export interface PlaybackConfig {
   speed: number;
   continuous: boolean;
+  repeat_count: number;
+}
+
+export interface AutoClickConfig {
+  interval_ms: number;
+  button: MouseBtn;
+  until_stopped: boolean;
   repeat_count: number;
 }
 
@@ -83,6 +95,12 @@ export interface RecordingProgressPayload {
 export interface PlaybackProgressPayload {
   loop: number;
   total: number;
+  pct: number;
+}
+
+export interface AutoClickProgressPayload {
+  current_clicks: number;
+  total_clicks: number;
   pct: number;
 }
 

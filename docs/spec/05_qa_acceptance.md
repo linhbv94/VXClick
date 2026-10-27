@@ -158,6 +158,41 @@ Feature: Quản lý Cửa sổ Thanh Công cụ Nổi
 
 ---
 
+### Kịch bản 9: Tự Động Nhấp Chuột (Auto Click) & Cấu Hình Chu Kỳ / Nút Chuột / Số Lần
+```gherkin
+Feature: Tính năng Auto Click Nhanh
+  Scenario: Kích hoạt Auto Click với cấu hình 100ms, nút trái và lặp đến khi dừng
+    Given VXClick đang ở trạng thái sẵn sàng (IDLE_EMPTY hoặc IDLE_READY)
+    When Người dùng bấm nút "Auto Click" trên thanh chính (hoặc nhấn "⌥⇧⌘C" / "Ctrl+Alt+Shift+C")
+    Then Trạng thái hệ thống chuyển sang "AUTOCLICKING"
+    And Nút Auto Click sáng màu hổ phách (Amber) với hiệu ứng pulse nhẹ và hiển thị số click
+    And Cửa sổ tự động mở rộng Dynamic Mini Bar (chiều cao 62px)
+    And Luồng nền tự động inject sự kiện Click liên tục tại vị trí con trỏ chuột hiện tại với chu kỳ 100ms
+    When Người dùng di chuyển chuột sang các vị trí khác nhau trên màn hình
+    Then Cú click tự động bám theo đúng tọa độ con trỏ chuột thời gian thực
+    When Người dùng bấm lại nút "Auto Click" (hoặc nhấn "⌥⇧⌘C")
+    Then Auto Click dừng ngay lập tức, xả phím chuột
+    And Mini Bar hiển thị thông báo đã dừng trong 1.2s rồi thu gọn về 38px
+    And Trạng thái hệ thống khôi phục về "IDLE_EMPTY" hoặc "IDLE_READY"
+```
+
+---
+
+### Kịch bản 10: Ngắt Khẩn Cấp Auto Click Bằng Phím Cứng ESC
+```gherkin
+Feature: Mạch Ngắt Khẩn Cấp Failsafe Cho Auto Click
+  Scenario: Người dùng đang bật Auto Click tốc độ cao và nhấn ESC để ngắt
+    Given Ứng dụng đang ở trạng thái "AUTOCLICKING" với chu kỳ 10ms
+    When Người dùng nhấn phím cứng "ESC" trên bàn phím vật lý
+    Then Luồng Auto Click bị đánh thức và ngắt tức thì trong vòng < 1ms
+    And Nếu chuột đang ở trạng thái Down, hệ thống tự động bắn Up giải phóng
+    And Mini Bar hiển thị thông báo "Đã dừng tự nhấp [ESC]" trong 1.4s
+    And Cửa sổ tự động thu gọn về 38px
+    And Trạng thái hệ thống trở về trạng thái Idle an toàn
+```
+
+---
+
 ## 2. Ma trận Tình huống Biên Khắc nghiệt (Edge Cases Matrix)
 
 | STT | Tình huống Biên (Edge Case) | Nguy cơ Tiềm ẩn | Cơ chế Phòng vệ & Hành vi Chuẩn của VXClick |
@@ -177,6 +212,9 @@ Feature: Quản lý Cửa sổ Thanh Công cụ Nổi
 | **13** | Quá tải hàng đợi Bounded Queue khi ghi thao tác quá dài | Bộ nhớ RAM bị phình to | Khi chạm ngưỡng 10.000 sự kiện, hệ thống tự động chốt dừng ghi an toàn và thông báo đạt dung lượng tối đa. |
 | **14** | Tổ hợp phím phức tạp có nhiều modifier (Ctrl + Shift + Alt + Windows + Key) | Thứ tự nhả phím bị sai lệch | Ghi nhận chính xác chuỗi `KeyDown` và `KeyUp` riêng rẽ cho từng phím thành phần, không phụ thuộc vào trạng thái gộp. |
 | **15** | Tệp kịch bản `.vxclick` bị lỗi cấu trúc hoặc hỏng checksum | Crash tiến trình hoặc làm mất macro hiện có trong RAM | Kiểm tra toàn vẹn định dạng nhị phân và CRC32 trước khi nạp; nếu lỗi từ chối nạp và bảo toàn macro cũ trong RAM. |
+| **16** | Bấm phím tắt Auto Click (`⌥⇧⌘C`) trong khi đang Recording | Gây nhiễu loạn luồng ghi dữ liệu | Backend từ chối lệnh `start_autoclick` nếu `SystemState == RECORDING` hoặc `PLAYING`, bảo vệ tuyệt đối chuỗi ghi. |
+| **17** | Người dùng di chuyển chuột tốc độ cao trong lúc Auto Click | Tọa độ click bị đơ tại vị trí xuất phát ban đầu | Mỗi chu kỳ nhấp chuột gọi `get_current_mouse_location()` thời gian thực từ OS, đảm bảo click luôn bám sát vị trí con trỏ. |
+| **18** | Đặt chu kỳ Auto Click cực nhỏ (ví dụ 10ms) | Tràn luồng IPC và đơ giao diện UI | Luồng nền Rust chỉ phát emit `autoclick_progress` theo tần suất tiết lưu (Throttled 100ms) kết hợp `condvar.wait_timeout`. |
 
 
 
@@ -187,3 +225,7 @@ Feature: Quản lý Cửa sổ Thanh Công cụ Nổi
 - Bật/tắt Pin nhiều lần vẫn giữ Mission Control/window cycling, đóng app vẫn shutdown engine.
 - Traffic lights giữ bezel native đúng đường kính sau launch/focus/resize; không ép frame12×12 hoặc bounds vuông. Lấy frame/bounds/controlSize mới từ AppKit và giữ padding, QA bằng SDK/profile của release.
 - Các tiêu chí là contract, chỉ đánh dấu PASS khi có evidence native tương ứng.
+
+## QA bổ sung trước release 2026-10-27
+
+Auto Click backend chỉ bắt đầu từ Idle, từ chối giai đoạn dừng khẩn cấp/engine bận. Kiểm tra IPC: interval10–60000ms, nút Left/Right, finite repeat1–999999; input không hợp lệ không tạo worker. Windows dummy từ chối Record/Play/Click trong backend. Serialization legacy/roundtrip chạy bằng Cargo; harness compressor plain-data tách khỏi test serde. Native GUI Mac đã mở, Settings cuộn được, thiếu Accessibility thì Click chỉ mở hướng dẫn; user yêu cầu bỏ qua test nhấp thật lần này. Không claim hardware hotkey/nhấp/stop hoặc giữ quyền qua updater đã nghiệm thu.

@@ -46,6 +46,21 @@ pub async fn get_macro_stats(state: State<'_, AppState>) -> Result<Option<MacroS
 // Lấy thông số bản ghi hiện tại trong RAM: số sự kiện, thời lượng tổng.
 
 // ==========================================
+// 2B. NHÓM ĐIỀU KHIỂN TỰ ĐỘNG NHẤP (AUTO CLICK)
+// ==========================================
+
+#[tauri::command]
+pub async fn start_autoclick(
+    config: Option<AutoClickConfig>,
+    state: State<'_, AppState>
+) -> Result<u64, String>;
+// Bắt đầu luồng auto click tại tọa độ chuột hiện tại theo cấu hình (interval_ms, button, until_stopped/repeat_count).
+
+#[tauri::command]
+pub async fn stop_autoclick(state: State<'_, AppState>) -> Result<(), String>;
+// Dừng auto click chủ động, xả phím chuột và khôi phục trạng thái FSM.
+
+// ==========================================
 // 3. NHÓM CẤU HÌNH, HỆ THỐNG & QUYỀN OS
 // ==========================================
 
@@ -99,6 +114,7 @@ pub async fn load_macro_file(file_path: String, state: State<'_, AppState>) -> R
 | `macro://state_changed` | `{ state: SystemState, session_id: u64, revision: u64 }` | Khi chuyển đổi FSM | Bổ sung `session_id` & `revision` để UI loại bỏ event lỗi thời. |
 | `macro://recording_event`| `{ count: usize, elapsed_ms: u64 }` | Throttle mỗi 200ms khi Rec | Cập nhật số lượng sự kiện đã thu thập. |
 | `macro://playback_progress`| `{ loop: u32, total: u32, pct: f32 }` | Sau mỗi chu kỳ vòng lặp | Cập nhật Mini Expand Bar: `loop / total` hoặc status continuous. |
+| `macro://autoclick_progress`| `{ current_clicks: u32, total_clicks: u32, pct: f32 }` | Throttle mỗi 100ms khi Auto Click | Cập nhật số lần click đã thực hiện và phần trăm hoàn thành. |
 | `macro://emergency_stopped`| `{ reason: String, timestamp: u64 }` | Khi nhấn phím cứng ESC | Báo hiệu hệ thống vừa kích hoạt mạch ngắt khẩn cấp. |
 
 ---
@@ -121,6 +137,7 @@ pub enum SystemState {
     Recording,
     IdleReady,
     Playing,
+    Autoclicking,
     EmergencyStopped,
 }
 
@@ -221,6 +238,26 @@ pub struct SettingsState {
     pub repeat_count: u32,         // Số lần lặp (1 - 9999)
     pub always_on_top: bool,       // Ghim cửa sổ trên cùng (độc lập với playback)
     pub language: String,          // "vi" | "en" (Song ngữ giao diện)
+    pub theme: String,             // "system" | "dark" | "light"
+    pub autoclick_interval_ms: u64,// Chu kỳ nhấp chuột (ms, mặc định 100)
+    pub autoclick_button: MouseBtn,// Nút chuột (Left / Right)
+    pub autoclick_until_stopped: bool, // Lặp đến khi dừng (true) hoặc theo số lần
+    pub autoclick_repeat_count: u32, // Số lần nhấp khi không lặp vô tận (mặc định 100)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoClickConfig {
+    pub interval_ms: u64,
+    pub button: MouseBtn,
+    pub until_stopped: bool,
+    pub repeat_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoClickProgressPayload {
+    pub current_clicks: u32,
+    pub total_clicks: u32,
+    pub pct: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -259,13 +296,15 @@ pub struct PlaybackProgressPayload {
 Đăng ký qua `tauri-plugin-global-shortcut`:
 
 ```rust
-pub const MAC_HOTKEY_REC:  &str = "Option+Shift+Command+R"; // ⌥⇧⌘R
-pub const MAC_HOTKEY_PLAY: &str = "Option+Shift+Command+P"; // ⌥⇧⌘P
+pub const MAC_HOTKEY_REC:       &str = "Option+Shift+Command+R"; // ⌥⇧⌘R
+pub const MAC_HOTKEY_PLAY:      &str = "Option+Shift+Command+P"; // ⌥⇧⌘P
+pub const MAC_HOTKEY_AUTOCLICK: &str = "Option+Shift+Command+C"; // ⌥⇧⌘C
 
-pub const WIN_HOTKEY_REC:  &str = "Control+Alt+Shift+R";
-pub const WIN_HOTKEY_PLAY: &str = "Control+Alt+Shift+P";
+pub const WIN_HOTKEY_REC:       &str = "Control+Alt+Shift+R";
+pub const WIN_HOTKEY_PLAY:      &str = "Control+Alt+Shift+P";
+pub const WIN_HOTKEY_AUTOCLICK: &str = "Control+Alt+Shift+C";
 
-pub const FAILSAFE_KEY:    &str = "Escape"; // Chỉ bắt khi state == Playing
+pub const FAILSAFE_KEY:         &str = "Escape"; // Bắt khi state == Playing hoặc Autoclicking
 ```
 
 ---
@@ -301,3 +340,7 @@ Cấu trúc định dạng tệp chuẩn xác:
 - **JSON Header (N bytes UTF-8):** Chứa metadata: `version`, `created_at`, `duration_us`, `event_count`, `screen_topology`, và mã kiểm tra `crc32`.
 - **Payload Bytes:** Dữ liệu chuỗi `MacroEvent` được serialize nhị phân (Bincode) hoặc JSON nén bằng Zstandard (Zstd), giải nén nhanh với độ trễ < 1ms.
 - **Quy tắc Nạp tệp (Safe Load Rule):** Quá trình nạp tệp bắt buộc phải giải nén và kiểm tra tính toàn vẹn (CRC32, kích thước bounds) thành công trước khi ghi đè vào RAM; nếu tệp lỗi hoặc hỏng, bản ghi macro hiện tại trong RAM được giữ nguyên vẹn.
+
+## QA bổ sung trước release 2026-10-27
+
+Auto Click backend chỉ bắt đầu từ Idle, từ chối giai đoạn dừng khẩn cấp/engine bận. Kiểm tra IPC: interval10–60000ms, nút Left/Right, finite repeat1–999999; input không hợp lệ không tạo worker. Windows dummy từ chối Record/Play/Click trong backend. Serialization legacy/roundtrip chạy bằng Cargo; harness compressor plain-data tách khỏi test serde. Native GUI Mac đã mở, Settings cuộn được, thiếu Accessibility thì Click chỉ mở hướng dẫn; user yêu cầu bỏ qua test nhấp thật lần này. Không claim hardware hotkey/nhấp/stop hoặc giữ quyền qua updater đã nghiệm thu.

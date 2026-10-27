@@ -7,6 +7,8 @@ import sys
 
 app = Path(__file__).resolve().parents[2]
 source = (app / "src-tauri/src/types.rs").read_text(encoding="utf-8")
+# Serialization tests run under Cargo; this harness uses plain types only.
+source = source.split("\n#[cfg(test)]\nmod tests {", 1)[0]
 source = source.replace("use serde::{Deserialize, Serialize};", "").replace(", Serialize, Deserialize", "")
 source = "\n".join(line for line in source.splitlines() if not line.strip().startswith("#[serde"))
 with tempfile.TemporaryDirectory(prefix="vxclick_qa_") as directory:

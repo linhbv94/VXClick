@@ -64,6 +64,16 @@ Mục tiêu: Làm nổi bật tính trực quan, tốc độ phản hồi tức 
 
 ---
 
+### Màn 5: Biểu Diễn Tự Động Nhấp Chuột (Auto Click) Siêu Nhanh với Phím Tắt ⌥⇧⌘C (30 Giây)
+* **Thao tác biểu diễn:**
+  1. Người dùng di chuyển chuột tới vị trí bất kỳ trên màn hình (ví dụ trang web bấm nút clicker hoặc game click).
+  2. Nhấn tổ hợp phím **`⌥⇧⌘C`** (macOS) hoặc **`Ctrl+Alt+Shift+C`** (Windows) (hoặc bấm nút **🖱 Auto Click** trên thanh chính).
+  3. Nút Auto Click phát sáng màu hổ phách (Amber), bộ đếm click `#1, #2, #3...` tăng vùn vụt; Mini Bar mở rộng hiển thị tiến trình tự động nhấp.
+  4. Người dùng di chuyển chuột sang các vị trí khác, các cú click tự động bám theo thời gian thực tại đúng vị trí con trỏ chuột.
+  5. Nhấn phím cứng **ESC** (hoặc bấm lại `⌥⇧⌘C`): Auto click ngắt tức thì trong < 1ms, Mini Bar hiển thị `Đã dừng tự nhấp [ESC]` và tự thu gọn về 38px.
+
+---
+
 ## 2. Danh Sách Kiểm Tra Trước Trình Diễn (Live Demo Checklist)
 
 | STT | Hạng mục Kiểm tra | Trạng thái Yêu cầu | Cách xác minh nhanh |

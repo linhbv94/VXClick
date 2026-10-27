@@ -12,14 +12,19 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::compressor::{compress_macro_events, WindowRect};
 use crate::ledger::ActiveInputLedger;
 use crate::platform::{
-    check_accessibility_permission, get_screen_topology, request_accessibility_permission,
-    EventCapture, EventInjector, GlobalHotkeyMonitor, GlobalHotkeyTrigger,
+    check_accessibility_permission, get_current_mouse_location, get_screen_topology,
+    request_accessibility_permission, EventCapture, EventInjector, GlobalHotkeyMonitor,
+    GlobalHotkeyTrigger,
 };
 use crate::types::{
-    EmergencyStoppedPayload, MacroAction, MacroStats, MacroTimeline,
-    PermissionStatus, PlaybackConfig, PlaybackProgressPayload, RecordingProgressPayload,
-    SettingsState, StateChangedPayload, SystemState,
+    AutoClickConfig, AutoClickProgressPayload, EmergencyStoppedPayload, MacroAction, MacroStats,
+    MacroTimeline, PermissionStatus, PlaybackConfig, PlaybackProgressPayload,
+    RecordingProgressPayload, SettingsState, StateChangedPayload, SystemState,
 };
+
+fn autoclick_start_allowed(state: SystemState) -> bool {
+    matches!(state, SystemState::IDLE_EMPTY | SystemState::IDLE_READY)
+}
 
 pub struct EngineState {
     pub current_state: SystemState,
@@ -109,12 +114,16 @@ impl MacroEngine {
 
                 if current_state == SystemState::PERMISSION_BLOCKED && is_trusted {
                     let mut state = engine_clone.inner.write().unwrap();
-                    state.current_state = SystemState::IDLE_EMPTY;
+                    state.current_state = if state.timeline.is_some() {
+                        SystemState::IDLE_READY
+                    } else {
+                        SystemState::IDLE_EMPTY
+                    };
                     engine_clone.emit_state_changed(&mut state);
                     drop(state);
                     engine_clone.init_global_hotkeys();
-                } else if current_state == SystemState::PLAYING && !is_trusted {
-                    // QA05: Bị thu hồi quyền trong lúc Playback -> Kích hoạt ngắt khẩn cấp và xả input
+                } else if (current_state == SystemState::PLAYING || current_state == SystemState::AUTOCLICKING) && !is_trusted {
+                    // QA05: Bị thu hồi quyền trong lúc Playback hoặc Auto Click -> Kích hoạt ngắt khẩn cấp và xả input
                     engine_clone.trigger_emergency_stop("permission_revoked");
                     let mut state = engine_clone.inner.write().unwrap();
                     state.current_state = SystemState::PERMISSION_BLOCKED;
@@ -165,6 +174,21 @@ impl MacroEngine {
                         let _ = engine_clone.stop_playback();
                     }
                 }
+                GlobalHotkeyTrigger::ToggleAutoClick => {
+                    let current = engine_clone.get_state();
+                    if current == SystemState::IDLE_EMPTY || current == SystemState::IDLE_READY {
+                        let settings = engine_clone.get_settings();
+                        let config = AutoClickConfig {
+                            interval_ms: settings.autoclick_interval_ms,
+                            button: settings.autoclick_button,
+                            until_stopped: settings.autoclick_until_stopped,
+                            repeat_count: settings.autoclick_repeat_count,
+                        };
+                        let _ = engine_clone.start_autoclick(Some(config));
+                    } else if current == SystemState::AUTOCLICKING {
+                        let _ = engine_clone.stop_autoclick();
+                    }
+                }
                 GlobalHotkeyTrigger::EmergencyStop => {
                     engine_clone.trigger_emergency_stop("esc");
                 }
@@ -195,7 +219,11 @@ impl MacroEngine {
         let current = self.get_state();
         if current == SystemState::PERMISSION_BLOCKED && is_trusted {
             let mut state = self.inner.write().unwrap();
-            state.current_state = SystemState::IDLE_EMPTY;
+            state.current_state = if state.timeline.is_some() {
+                SystemState::IDLE_READY
+            } else {
+                SystemState::IDLE_EMPTY
+            };
             self.emit_state_changed(&mut state);
             drop(state);
             self.init_global_hotkeys();
@@ -239,6 +267,9 @@ impl MacroEngine {
     // ==========================================
 
     pub fn start_recording(&self) -> Result<u64, String> {
+        if cfg!(target_os = "windows") {
+            return Err("Windows hiện chỉ có giao diện và cập nhật; engine chưa khả dụng.".into());
+        }
         let mut state = self.inner.write().unwrap();
 
         if state.is_shutting_down.load(Ordering::SeqCst) {
@@ -251,8 +282,8 @@ impl MacroEngine {
             return Err("Cần cấp quyền Trợ năng (Accessibility) để ghi thao tác.".to_string());
         }
 
-        if state.current_state == SystemState::PLAYING {
-            return Err("Không thể bắt đầu ghi khi đang phát lại macro.".to_string());
+        if state.current_state == SystemState::PLAYING || state.current_state == SystemState::AUTOCLICKING {
+            return Err("Không thể bắt đầu ghi khi đang phát lại macro hoặc auto click.".to_string());
         }
 
         // Khởi tạo capture session native
@@ -406,12 +437,18 @@ impl MacroEngine {
     // ==========================================
 
     pub fn start_playback(&self, config: PlaybackConfig) -> Result<u64, String> {
+        if cfg!(target_os = "windows") {
+            return Err("Windows hiện chỉ có giao diện và cập nhật; engine chưa khả dụng.".into());
+        }
         let old_worker = {
             let mut state = self.inner.write().unwrap();
             if state.is_shutting_down.load(Ordering::SeqCst) {
                 return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
             }
             if state.current_state != SystemState::IDLE_READY {
+                if state.current_state == SystemState::AUTOCLICKING {
+                    return Err("Không thể phát lại khi đang auto click.".to_string());
+                }
                 return Err("Chưa có kịch bản macro sẵn sàng trong RAM.".to_string());
             }
             state.playback_worker.take()
@@ -561,9 +598,299 @@ impl MacroEngine {
         Ok(())
     }
 
+    // ==========================================
+    // 3. LUỒNG AUTO CLICK (TỰ ĐỘNG NHẤP CHUỘT)
+    // ==========================================
+
+    pub fn start_autoclick(&self, config_opt: Option<AutoClickConfig>) -> Result<u64, String> {
+        if cfg!(target_os = "windows") {
+            return Err("Windows hiện chỉ có giao diện và cập nhật; engine chưa khả dụng.".into());
+        }
+        let old_worker = {
+            let mut state = self.inner.write().unwrap();
+            if state.is_shutting_down.load(Ordering::SeqCst) {
+                return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
+            }
+            if !autoclick_start_allowed(state.current_state) {
+                return Err(format!("Không thể bắt đầu Auto Click ở trạng thái {:?}", state.current_state));
+            }
+            if !check_accessibility_permission() {
+                state.current_state = SystemState::PERMISSION_BLOCKED;
+                self.emit_state_changed(&mut state);
+                return Err("Cần cấp quyền Trợ năng (Accessibility) để tự động nhấp chuột.".to_string());
+            }
+            state.playback_worker.take()
+        };
+
+        if let Some(w) = old_worker {
+            let _ = w.join();
+        }
+
+        let mut state = self.inner.write().unwrap();
+        if state.is_shutting_down.load(Ordering::SeqCst) {
+            return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
+        }
+
+        if !autoclick_start_allowed(state.current_state) {
+            return Err(format!("Không thể bắt đầu Auto Click ở trạng thái {:?}", state.current_state));
+        }
+
+        if !check_accessibility_permission() {
+            state.current_state = SystemState::PERMISSION_BLOCKED;
+            self.emit_state_changed(&mut state);
+            return Err("Cần cấp quyền Trợ năng (Accessibility) để tự động nhấp chuột.".to_string());
+        }
+
+        let config = config_opt.unwrap_or_else(|| AutoClickConfig {
+            interval_ms: state.settings.autoclick_interval_ms,
+            button: state.settings.autoclick_button,
+            until_stopped: state.settings.autoclick_until_stopped,
+            repeat_count: state.settings.autoclick_repeat_count,
+        });
+
+        let session_id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+
+        config.validate()?;
+        let session_id = session_id.max(state.session_id.saturating_add(1));
+        state.session_id = session_id;
+        state.current_state = SystemState::AUTOCLICKING;
+
+        let abort_pair = Arc::new((Mutex::new(false), Condvar::new()));
+        state.playback_abort_pair = abort_pair.clone();
+
+        self.emit_state_changed(&mut state);
+
+        let app_handle_opt = state.app_handle.clone();
+        let engine_clone = self.clone();
+
+        let interval_ms = config.interval_ms.max(10);
+        let target_button = config.button;
+        let until_stopped = config.until_stopped;
+        let total_clicks = if until_stopped { 0 } else { config.repeat_count.max(1) };
+
+        let worker_handle = std::thread::spawn(move || {
+            let injector = EventInjector::new();
+            let mut ledger = ActiveInputLedger::new();
+            let mut last_pos = (0, 0);
+
+            let (lock, cvar) = &*abort_pair;
+            let mut current_click = 0u32;
+            let mut was_aborted = false;
+            let mut last_progress_emit = Instant::now();
+
+            'click_loop: loop {
+                // 1. Kiểm tra cờ abort trước khi thực hiện nhấp
+                {
+                    let guard = match lock.lock() {
+                        Ok(g) => g,
+                        Err(e) => e.into_inner(),
+                    };
+                    if *guard {
+                        was_aborted = true;
+                        break 'click_loop;
+                    }
+                }
+
+                if !until_stopped && current_click >= total_clicks {
+                    break 'click_loop;
+                }
+
+                // 2. Lấy tọa độ con trỏ chuột thời gian thực từ OS
+                let (cur_x, cur_y) = match get_current_mouse_location() {
+                    Some(loc) => loc,
+                    None => {
+                        // Nếu không đọc được vị trí (ví dụ trên Windows dummy hoặc khi màn hình khóa),
+                        // chờ ngắn có thể hủy được rồi thử lại, tuyệt đối KHÔNG click bừa vào (0, 0)
+                        let mut guard = match lock.lock() {
+                            Ok(g) => g,
+                            Err(e) => e.into_inner(),
+                        };
+                        if *guard {
+                            was_aborted = true;
+                            break 'click_loop;
+                        }
+                        let wait_dur = Duration::from_millis(50);
+                        let deadline = Instant::now() + wait_dur;
+                        while !*guard {
+                            let now = Instant::now();
+                            if now >= deadline {
+                                break;
+                            }
+                            let rem = deadline - now;
+                            match cvar.wait_timeout(guard, rem) {
+                                Ok((g, _)) => guard = g,
+                                Err(e) => guard = e.into_inner().0,
+                            }
+                        }
+                        if *guard {
+                            was_aborted = true;
+                            break 'click_loop;
+                        }
+                        continue 'click_loop;
+                    }
+                };
+
+                // 3. MouseDown
+                injector.inject_action(
+                    &MacroAction::MouseDown {
+                        button: target_button,
+                        x: cur_x,
+                        y: cur_y,
+                    },
+                    &mut ledger,
+                    &mut last_pos,
+                );
+
+                // 4. Giữ chuột 10ms có thể hủy tức thì bằng Condvar (thay vì thread::sleep không thể hủy)
+                let mut hold_guard = match lock.lock() {
+                    Ok(g) => g,
+                    Err(e) => e.into_inner(),
+                };
+                if !*hold_guard {
+                    let hold_deadline = Instant::now() + Duration::from_millis(10);
+                    while !*hold_guard {
+                        let now = Instant::now();
+                        if now >= hold_deadline {
+                            break;
+                        }
+                        let rem = hold_deadline - now;
+                        match cvar.wait_timeout(hold_guard, rem) {
+                            Ok((g, _)) => hold_guard = g,
+                            Err(e) => hold_guard = e.into_inner().0,
+                        }
+                    }
+                }
+
+                // 5. LUÔN LUÔN inject MouseUp tại cùng tọa độ để giải phóng chuột an toàn
+                injector.inject_action(
+                    &MacroAction::MouseUp {
+                        button: target_button,
+                        x: cur_x,
+                        y: cur_y,
+                    },
+                    &mut ledger,
+                    &mut last_pos,
+                );
+
+                if *hold_guard {
+                    was_aborted = true;
+                    break 'click_loop;
+                }
+                drop(hold_guard);
+
+                current_click += 1;
+
+                // 6. Tiết lưu (Throttled 100ms) khi phát sự kiện tiến độ để bảo vệ luồng IPC
+                let is_last_click = !until_stopped && current_click >= total_clicks;
+                if last_progress_emit.elapsed() >= Duration::from_millis(100) || is_last_click {
+                    last_progress_emit = Instant::now();
+                    if let Some(app) = &app_handle_opt {
+                        let pct = if total_clicks > 0 {
+                            ((current_click as f32 / total_clicks as f32) * 100.0).clamp(0.0, 100.0)
+                        } else {
+                            0.0
+                        };
+                        let _ = app.emit(
+                            "macro://autoclick_progress",
+                            AutoClickProgressPayload {
+                                current_clicks: current_click,
+                                total_clicks,
+                                pct,
+                            },
+                        );
+                    }
+                }
+
+                if is_last_click {
+                    break 'click_loop;
+                }
+
+                // 7. Chờ hết chu kỳ interval còn lại với vòng lặp predicate bảo đảm không bao giờ miss notification
+                let mut guard = match lock.lock() {
+                    Ok(g) => g,
+                    Err(e) => e.into_inner(),
+                };
+                if *guard {
+                    was_aborted = true;
+                    break 'click_loop;
+                }
+
+                let sleep_duration = Duration::from_millis(interval_ms.saturating_sub(10).max(1));
+                let deadline = Instant::now() + sleep_duration;
+                while !*guard {
+                    let now = Instant::now();
+                    if now >= deadline {
+                        break;
+                    }
+                    let rem = deadline - now;
+                    match cvar.wait_timeout(guard, rem) {
+                        Ok((g, _)) => guard = g,
+                        Err(e) => guard = e.into_inner().0,
+                    }
+                }
+                if *guard {
+                    was_aborted = true;
+                    break 'click_loop;
+                }
+            }
+
+            // Xả toàn bộ trạng thái phần cứng dở dang
+            injector.flush_hardware_state(&mut ledger, last_pos);
+
+            // Bắn tiến độ cuối cùng bảo toàn số current_clicks thật (không xóa về 0)
+            if let Some(app) = &app_handle_opt {
+                let pct = if total_clicks > 0 {
+                    ((current_click as f32 / total_clicks as f32) * 100.0).clamp(0.0, 100.0)
+                } else {
+                    0.0
+                };
+                let _ = app.emit(
+                    "macro://autoclick_progress",
+                    AutoClickProgressPayload {
+                        current_clicks: current_click,
+                        total_clicks,
+                        pct,
+                    },
+                );
+            }
+
+            engine_clone.on_autoclick_ended(session_id, was_aborted);
+        });
+
+        state.playback_worker = Some(worker_handle);
+
+        Ok(session_id)
+    }
+
+    pub fn stop_autoclick(&self) -> Result<(), String> {
+        let state = self.inner.read().unwrap();
+        if state.current_state == SystemState::AUTOCLICKING {
+            let (lock, cvar) = &*state.playback_abort_pair;
+            *lock.lock().unwrap() = true;
+            cvar.notify_all();
+        }
+        Ok(())
+    }
+
+    fn on_autoclick_ended(&self, session_id: u64, was_aborted: bool) {
+        let mut state = self.inner.write().unwrap();
+        if state.session_id == session_id && state.current_state == SystemState::AUTOCLICKING {
+            state.current_state = if state.timeline.is_some() {
+                SystemState::IDLE_READY
+            } else {
+                SystemState::IDLE_EMPTY
+            };
+            self.emit_state_changed(&mut state);
+        }
+        let _ = was_aborted;
+    }
+
     pub fn trigger_emergency_stop(&self, reason: &str) {
         let mut state = self.inner.write().unwrap();
-        if state.current_state == SystemState::PLAYING {
+        if state.current_state == SystemState::PLAYING || state.current_state == SystemState::AUTOCLICKING {
             let (lock, cvar) = &*state.playback_abort_pair;
             *lock.lock().unwrap() = true;
             cvar.notify_all();
@@ -588,7 +915,11 @@ impl MacroEngine {
                 std::thread::sleep(Duration::from_millis(500));
                 let mut guard = inner_clone.write().unwrap();
                 if guard.current_state == SystemState::EMERGENCY_STOPPED {
-                    guard.current_state = SystemState::IDLE_READY;
+                    guard.current_state = if guard.timeline.is_some() {
+                        SystemState::IDLE_READY
+                    } else {
+                        SystemState::IDLE_EMPTY
+                    };
                     guard.revision += 1;
                     let payload = StateChangedPayload {
                         state: guard.current_state,
@@ -642,5 +973,95 @@ impl MacroEngine {
         if let Some(monitor) = self._hotkey_monitor.lock().unwrap().take() {
             monitor.stop();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn autoclick_waits_for_emergency_recovery_and_rejects_busy_states() {
+        assert!(autoclick_start_allowed(SystemState::IDLE_EMPTY));
+        assert!(autoclick_start_allowed(SystemState::IDLE_READY));
+        for state in [SystemState::RECORDING, SystemState::PLAYING,
+                      SystemState::AUTOCLICKING, SystemState::PERMISSION_BLOCKED,
+                      SystemState::EMERGENCY_STOPPED] {
+            assert!(!autoclick_start_allowed(state));
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn dummy_backend_rejects_actions_without_changing_state() {
+        let engine = MacroEngine::new();
+        let initial = engine.get_state();
+        assert!(engine.start_recording().is_err());
+        assert!(engine.start_playback(PlaybackConfig {speed:1.0,continuous:false,repeat_count:1}).is_err());
+        assert!(engine.start_autoclick(Some(AutoClickConfig::default())).is_err());
+        assert_eq!(engine.get_state(), initial);
+    }
+
+    #[test]
+    fn test_autoclick_ended_preserves_ready_state_when_timeline_exists() {
+        let engine = MacroEngine::new();
+        let session_id = 12345;
+        {
+            let mut state = engine.inner.write().unwrap();
+            state.session_id = session_id;
+            state.current_state = SystemState::AUTOCLICKING;
+            state.timeline = Some(MacroTimeline {
+                version: 1,
+                created_at: "2026-10-27T00:00:00Z".to_string(),
+                duration_us: 1000,
+                event_count: 2,
+                screen_topology: crate::types::ScreenTopology {
+                    virtual_width: 1920,
+                    virtual_height: 1080,
+                    scale_factor: 2.0,
+                },
+                events: vec![],
+            });
+        }
+
+        engine.on_autoclick_ended(session_id, false);
+
+        let state = engine.inner.read().unwrap();
+        assert_eq!(state.current_state, SystemState::IDLE_READY);
+    }
+
+    #[test]
+    fn test_autoclick_ended_recovers_empty_state_when_no_timeline() {
+        let engine = MacroEngine::new();
+        let session_id = 99999;
+        {
+            let mut state = engine.inner.write().unwrap();
+            state.session_id = session_id;
+            state.current_state = SystemState::AUTOCLICKING;
+            state.timeline = None;
+        }
+
+        engine.on_autoclick_ended(session_id, false);
+
+        let state = engine.inner.read().unwrap();
+        assert_eq!(state.current_state, SystemState::IDLE_EMPTY);
+    }
+
+    #[test]
+    fn test_autoclick_ended_ignores_stale_session_id() {
+        let engine = MacroEngine::new();
+        let current_session_id = 55555;
+        let stale_session_id = 11111;
+        {
+            let mut state = engine.inner.write().unwrap();
+            state.session_id = current_session_id;
+            state.current_state = SystemState::AUTOCLICKING;
+        }
+
+        engine.on_autoclick_ended(stale_session_id, false);
+
+        let state = engine.inner.read().unwrap();
+        // Không bị đổi trạng thái vì session_id đã lỗi thời
+        assert_eq!(state.current_state, SystemState::AUTOCLICKING);
     }
 }

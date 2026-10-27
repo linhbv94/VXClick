@@ -12,7 +12,7 @@
   html, body {
     margin: 0;
     padding: 0;
-    width: 310px;
+    width: 360px;
     height: auto;
     overflow: hidden !important;
     background-color: transparent !important;
@@ -23,7 +23,7 @@
 /* Vỏ bọc widget nguyên khối (Single Unified Shell) */
 /* Light Mode (sáng, thanh lịch, chuẩn Apple glassmorphism) */
 .widget_shell {
-  width: 310px;
+  width: 360px;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);

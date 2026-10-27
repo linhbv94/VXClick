@@ -12,13 +12,13 @@
 
 VXClick không sử dụng cửa sổ truyền thống với các menu File, Edit, View cồng kềnh. Giao diện của ứng dụng được thu gọn tối đa thành một **thanh công cụ nổi (Floating Pill Bar)** thanh lịch, neo gọn gàng trên màn hình desktop:
 
-* **Kích thước Cố định Thanh Widget (Main Bar):** Rộng `310px`, Cao `38px` (gồm thanh điều khiển 32px chuẩn theo [desktop_ui_standards.md](../../../.agents/desktop_ui_standards.md) cộng 3px padding trên/dưới bảo vệ đổ bóng viền).
+* **Kích thước Cố định Thanh Widget (Main Bar):** Rộng `360px`, Cao `38px` (gồm thanh điều khiển 32px chuẩn theo [desktop_ui_standards.md](../../../.agents/desktop_ui_standards.md) cộng 3px padding trên/dưới bảo vệ đổ bóng viền).
 * **Bán kính bo góc (Border Radius):** `12px` (chuẩn `rounded-xl`), viền mảnh `1px` sắc nét.
 * **Kéo thả cửa sổ (Window Dragging):** Bất kỳ vùng đệm trống nào giữa các nút hoặc hai đầu thanh công cụ đều được gắn thuộc tính `data-tauri-drag-region`, cho phép người dùng nhấp giữ chuột để di chuyển cửa sổ đến bất kỳ vị trí thuận tiện nào trên màn hình.
 * **Kiến trúc Cửa sổ Đa tầng (Multi-Window & Dynamic Expansion):**
   - Chiều cao thanh mini ban đầu là `38px`.
-  - *Khi Playback (Dynamic Mini Expand Bar):* Cửa sổ tự động mở rộng chiều cao xuống dưới thành `62px` để hiển thị dòng trạng thái tiến trình (Lặp X lần hoặc Lặp đến tận thế). Khi dừng, tự động thu gọn lại đúng `38px`.
-  - *Khi Mở Menu Setting Nhanh:* Cửa sổ mở rộng chiều cao xuống dưới thành `290px` (`appWindow.setSize(LogicalSize::new(310.0, 290.0))`) hiển thị trọn vẹn menu Setting không thanh cuộn. Khi đóng menu, cửa sổ tự động thu gọn lại đúng `38px`.
+  - *Khi Playback hoặc Auto Click (Dynamic Mini Expand Bar):* Cửa sổ tự động mở rộng chiều cao xuống dưới thành `62px` để hiển thị dòng trạng thái tiến trình (Lặp X lần hoặc Lặp đến tận thế hoặc Auto Click). Khi dừng, tự động thu gọn lại đúng `38px`.
+  - *Khi Mở Menu Setting Nhanh:* Cửa sổ mở rộng chiều cao xuống dưới thành `340px` (`appWindow.setSize(LogicalSize::new(360.0, 340.0))`) hiển thị trọn vẹn menu Setting gồm cả mục Macro và Auto Click không thanh cuộn. Khi đóng menu, cửa sổ tự động thu gọn lại đúng `38px`.
   - *Khi Mở Modal Hướng Dẫn Cấp Quyền / Giới thiệu / Ủng hộ Tác giả:* Hiển thị dạng Modal lớp phủ (Overlay) hoặc Cửa sổ Hộp thoại Phụ Độc lập (Secondary Dialog Window) kích thước `380px × 360px`, căn giữa màn hình, hiển thị mã VietQR hoặc hướng dẫn cấp quyền 3 bước rõ ràng.
 * **Quy chuẩn Tích hợp Hệ điều hành:**
   - *Trên Windows:* Bỏ hoàn toàn titlebar native của OS (`decorations: false`, không để runtime effect gọi `setWindowDecorations(true)` gây double bar). Nút đóng `✕` và thu nhỏ `─` nằm ở góc phải thanh công cụ.
@@ -28,20 +28,20 @@ VXClick không sử dụng cửa sổ truyền thống với các menu File, Edi
 
 ## 2. Wireframe Thanh Điều khiển Chính (Bố cục macOS & Windows)
 
-Thanh công cụ được tích hợp theo chuẩn 1 hàng duy nhất (`Single-Row Window Bar`), kích thước chiều rộng `310px`, chiều cao `38px`:
+Thanh công cụ được tích hợp theo chuẩn 1 hàng duy nhất (`Single-Row Window Bar`), kích thước chiều rộng `360px`, chiều cao `38px`:
 
 ### 2.1. Bố cục trên macOS (Apple Silicon & Intel)
 Góc trái hiển thị cụm **3 nút Traffic Lights native** trong vùng đệm `54×38px` căn giữa dọc:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
-│ [● ● ○]   [ ● Rec ]      [ ▶ Play ]      [ 📌 Pin ]    [ ⚙ Setting ▾ ] │
+│ [● ● ○]   [ ● Rec ]   [ ▶ Play ]   [ ↖ Click ]   [ 📌 Pin ]  [ ⚙ Set ▾ ]│
 └────────────────────────────────────────────────────────────────────────┘
-    ▲           ▲              ▲               ▲               ▲
-    │           │              │               │               │
- Vùng đệm    Nút 1:         Nút 2:          Nút 3:          Nút 4:
- Traffic     Ghi thao tác   Phát lại macro  Ghim trên cùng  Thiết lập nhanh
- Lights      (⌥⇧⌘R)         (⌥⇧⌘P)          (Always on Top)
+    ▲           ▲           ▲            ▲             ▲           ▲
+    │           │           │            │             │           │
+ Vùng đệm    Nút 1:      Nút 2:       Nút 3:        Nút 4:      Nút 5:
+ Traffic     Ghi macro   Phát macro   Auto Click    Ghim nổi    Cài đặt
+ Lights      (⌥⇧⌘R)      (⌥⇧⌘P)       (⌥⇧⌘C)        (Pin Top)   (Settings)
  (54×38px)
 ```
 
@@ -50,14 +50,12 @@ Theo quy chuẩn [desktop_ui_standards.md](../../../.agents/desktop_ui_standards
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
-│  :::     [ ● Rec ]      [ ▶ Play ]      [ 📌 Pin ]    [ ⚙ ▾ ]   [─] [✕]│
+│ :::  [ ● Rec ]  [ ▶ Play ]  [ ↖ Click ]  [ 📌 Pin ]  [ ⚙ ▾ ]   [─] [✕] │
 └────────────────────────────────────────────────────────────────────────┘
-    ▲          ▲              ▲               ▲           ▲         ▲
-    │          │              │               │           │         │
-  Drag       Nút 1:         Nút 2:          Nút 3:      Nút 4:    Nút thu
-  Handle     Ghi thao tác   Phát lại macro  Ghim nổi    Cài đặt   nhỏ & đóng
-             (Ctrl+Alt+     (Ctrl+Alt+
-             Shift+R)       Shift+P)
+  ▲        ▲          ▲           ▲            ▲         ▲         ▲
+  │        │          │           │            │         │         │
+ Drag    Nút 1:     Nút 2:      Nút 3:       Nút 4:    Nút 5:    Thu nhỏ
+ Handle  Ghi macro  Phát macro  Auto Click   Ghim nổi  Cài đặt   & đóng
 ```
 
 ---
@@ -208,6 +206,27 @@ Khi người dùng nhấn vào nút **⚙ Setting ▾**, một bảng Popover hi
 │ │ (Vô hiệu hóa vì đang bật Đến tận thế)     │ [ 10 ]  │ │
 │ └───────────────────────────────────────────┴─────────┘ │
 ├─────────────────────────────────────────────────────────┤
+│ 🖱 CÀI ĐẶT TỰ ĐỘNG NHẤP (AUTO CLICK)         [ ⌥⇧⌘C ]  │
+├─────────────────────────────────────────────────────────┤
+│ Chu kỳ nhấp (Click Interval): 100 ms                    │
+│ ┌───────┬───────┬───────┬───────┬────────┬────────────┐ │
+│ │ 50ms  │ 100ms*│ 200ms │ 500ms │  1s    │ Tuỳ chỉnh  │ │
+│ └───────┴───────┴───────┴───────┴────────┴────────────┘ │
+├─────────────────────────────────────────────────────────┤
+│ Phím chuột (Mouse Button)        [ Trái (L)* | Phải (R) ]│
+├─────────────────────────────────────────────────────────┤
+│ Nhấp đến khi dừng (Until stopped)              [  ON  ] │
+│ Nhấp liên tục cho đến khi bấm dừng hoặc ESC             │
+├─────────────────────────────────────────────────────────┤
+│ Số lần nhấp (Click Count)                     [  --  ]  │
+│ ┌───────────────────────────────────────────┬─────────┐ │
+│ │ (Vô hiệu hóa vì đang bật Đến khi dừng)    │ [ 100 ] │ │
+│ └───────────────────────────────────────────┴─────────┘ │
+├─────────────────────────────────────────────────────────┤
+│ Luôn nổi trên cùng (Always on Top)             [  ON  ] │
+├─────────────────────────────────────────────────────────┤
+│ Giao diện (Theme)             [ Hệ thống* | Tối | Sáng ]│
+├─────────────────────────────────────────────────────────┤
 │ Ngôn ngữ giao diện (Language)               [ Tiếng Việt ]
 ├─────────────────────────────────────────────────────────┤
 │────────────────── ĐƯỜNG KẺ PHÂN CÁCH ───────────────────│
@@ -295,6 +314,8 @@ Tuân thủ nghiêm ngặt bảng mã màu Dark/Light Mode của [master_theme.m
 | **Nút Rec (Recording)** | `#dc2626` | `#b91c1c` | `bg-red-600 text-white animate-pulse` | Ô vuông đỏ nhấp nháy báo hiệu đang ghi |
 | **Nút Play (Ready)** | `#10b981` | `#059669` | `text-emerald-500 hover:bg-emerald-500/10`| Tam giác xanh lá sẵn sàng hoạt động |
 | **Nút Play (Playing)** | `#059669` | `#047857` | `bg-emerald-600 text-white animate-pulse` | Ô vuông xanh báo hiệu đang phát lại |
+| **Nút Auto Click (Idle)** | `#f59e0b` | `#d97706` | `text-amber-500 hover:bg-amber-500/10` | Con trỏ click màu hổ phách sẵn sàng |
+| **Nút Auto Click (Running)**| `#d97706` | `#b45309` | `bg-amber-600 text-white animate-pulse` | Báo hiệu đang tự nhấp kèm bộ đếm |
 | **Nút Pin (Pinned ON)** | `#38bdf8` | `#0284c7` | `text-sky-400 bg-sky-500/10 border-sky-500/30` | Nổi bật báo hiệu đang ghim trên cùng |
 | **Nút Pin (Unpinned OFF)**| `#64748b` | `#94a3b8` | `text-slate-500 hover:text-slate-300` | Xám mờ khi không ghim |
 | **Nút Setting** | `#94a3b8` | `#64748b` | `text-slate-400 hover:text-slate-200` | Bánh răng xám thanh lịch |

@@ -8,7 +8,7 @@
 > **Ngày cập nhật:** 2026-10-15  
 > **Nền tảng mục tiêu:** macOS (Apple Silicon & Intel) + Windows 11/10 (x64)  
 > **Kiến trúc phân tầng:**
-> - **Tầng 1 (UI Shell — Single-Row Widget Siêu Tối Giản):** Tauri v2 WebView (React 19 + TypeScript + Vite + Tailwind CSS) tuân thủ nghiêm ngặt [master_theme.md](../../../_summary/master_theme.md) và [desktop_ui_standards.md](../../../.agents/desktop_ui_standards.md). Cửa sổ dạng Floating Bar kích thước `310px × 38px`, chừa vùng đệm Traffic Lights native macOS `54×38px` căn giữa dọc pixel-perfect, Drag Handle kéo thả native, cùng 4 nút cốt lõi: `Rec`, `Play`, `Pin` (Always on Top đưa ra ngoài), `Setting`. Hỗ trợ Dark/Light/System theme và Song ngữ Vi/En. Tự động expand Mini Status Bar khi Playback (hiển thị tiến trình lặp x/X lần hoặc nhắc nhở ESC khi lặp vô tận).
+> - **Tầng 1 (UI Shell — Single-Row Widget Siêu Tối Giản):** Tauri v2 WebView (React 19 + TypeScript + Vite + Tailwind CSS) tuân thủ nghiêm ngặt [master_theme.md](../../../_summary/master_theme.md) và [desktop_ui_standards.md](../../../.agents/desktop_ui_standards.md). Cửa sổ dạng Floating Bar kích thước `360px × 38px`, chừa vùng đệm Traffic Lights native macOS `54×38px` căn giữa dọc pixel-perfect, Drag Handle kéo thả native, cùng 5 nút cốt lõi: `Rec`, `Play`, `Auto Click` (Semantic Amber), `Pin` (Always on Top đưa ra ngoài), `Setting`. Hỗ trợ Dark/Light/System theme và Song ngữ Vi/En. Tự động expand Mini Status Bar khi Playback hoặc Auto Click (hiển thị tiến trình lặp x/X lần hoặc nhắc nhở ESC khi lặp vô tận).
 > - **Tầng 2 (Macro Core Engine — 100% Rust Native):**
 >   - *Bộ thu nạp sự kiện (Event Capture Engine):* Sử dụng Lock-free Ring Buffer (`crossbeam-channel`) thu nhận các sự kiện chuột và phím thời gian thực, chống hiện tượng nghẽn luồng (thread blocking).
 >   - *Bộ nén thích ứng di chuyển chuột & Tự loại trừ (Adaptive Compression & Self-Exclusion):* Loại bỏ vi rung (< 3px & < 16ms), duy trì tần số lấy mẫu 60Hz-120Hz mượt nét vẽ trong Drag Mode, tự động lọc click vào thanh widget của app.
@@ -39,8 +39,8 @@ Các giải pháp hiện có trên thị trường bộc lộ nhiều hạn ch�
 
 ### 1.2. Sứ mệnh của VXClick
 VXClick sinh ra để trở thành **tiện ích tự động hóa macro chuột/phím tối giản nhất thế giới**:
-- **Cực kỳ tinh gọn:** Đúng 3 nút bấm trên màn hình (`Rec`, `Play`, `Setting`). Mở lên là dùng ngay, không cần đọc hướng dẫn.
-- **Hiện đại & Đẹp mắt:** Giao diện Slate Navy hiện đại, hỗ trợ Dark Mode hoàn hảo, ghim nổi mượt mà trên desktop.
+- **Cực kỳ tinh gọn:** 5 nút bấm cốt lõi trên màn hình (`Rec`, `Play`, `Auto Click`, `Pin`, `Setting`). Mở lên là dùng ngay, không cần đọc hướng dẫn.
+- **Hiện đại & Đẹp mắt:** Giao diện Slate Navy hiện đại, hỗ trợ Dark Mode hoàn hảo, ghim nổi mượt mà trên desktop kích thước siêu nhỏ 360×38px.
 - **Mạnh mẽ ở tầng sâu:** Động cơ Rust xử lý hook tầng thấp với độ chính xác cấp micro-giây, an toàn tuyệt đối, không tiêu tốn tài nguyên CPU.
 
 ---
@@ -130,8 +130,9 @@ Dưới đây là ma trận phân tích các thách thức kỹ thuật cốt l�
     Trên macOS và Windows, khi inject phím/chuột, gán giá trị nhận diện `0x5658434C` (mã ASCII "VXCL"). Luồng Hook ngắt khẩn cấp kiểm tra định danh: **chỉ chấp nhận phím ESC từ bàn phím vật lý thực sự của người dùng**, bỏ qua phím do phần mềm tự phát.
   - **Quy chuẩn Phím tắt Toàn cầu Duy nhất (Zero-Conflict Hotkeys — Đồng nhất Mac & Win):**
     - **Ghi / Dừng Ghi (Rec / Stop Recording):** `⌥ + ⇧ + ⌘ + R` (macOS: `Option + Shift + Command + R`) ⟷ `Ctrl + Alt + Shift + R` (Windows). Cơ chế toggle 2 chiều.
-    - **Phát / Dừng Phát (Play / Stop Playback):** `⌥ + ⇧ + ⌘ + P` (macOS: `Option + Shift + Command + P`) ⟷ `Ctrl + Alt + Shift + P` (Windows).
-    - **Ngắt khẩn cấp (Emergency Failsafe):** `ESC` (chỉ có hiệu lực khi đang Playback). Tuyệt đối không dùng `ESC` để dừng ghi nhằm tránh nuốt phím khi người dùng đang thao tác thực tế trong các ứng dụng khác.
+    - **Phát / Dừng Phát (Play / Stop Playback):** `⌥ + ⇧ + ⌘ + P` (macOS: `Option + Shift + Command + P`) ⟷ `Ctrl + Alt + Shift + P` (Windows). Cơ chế toggle 2 chiều.
+    - **Tự động Nhấp Chuột (Auto Click / Stop Auto Click):** `⌥ + ⇧ + ⌘ + C` (macOS: `Option + Shift + Command + C`) ⟷ `Ctrl + Alt + Shift + C` (Windows). Cơ chế toggle 2 chiều.
+    - **Ngắt khẩn cấp (Emergency Failsafe):** `ESC` (có hiệu lực khi đang Playback hoặc Auto Click). Tuyệt đối không dùng `ESC` để dừng ghi nhằm tránh nuốt phím khi người dùng đang thao tác thực tế trong các ứng dụng khác.
 
 ---
 
@@ -193,11 +194,13 @@ Sơ đồ phân chia trách nhiệm đa luồng trong tiến trình Rust Native 
      - Hộp thoại `PermissionModal` cung cấp hướng dẫn 3 bước trực quan, nút 1-chạm mở trực tiếp `Privacy & Security -> Accessibility`, và nút **"Khởi động lại ứng dụng"** (Relaunch 1-chạm qua Tauri command `restart_app`) để hỗ trợ nạp lại token quyền ngay khi user đã bật toggle trong Cài đặt Hệ thống.
      - Luồng nền `init_permission_watcher` kiểm tra quyền mỗi 800ms kết hợp listener `focus` ở frontend giúp mở khóa tức thì (Zero-Restart) ngay khi quyền sẵn sàng.
    - **Quy chuẩn Ký số Bắt buộc (Deep Ad-hoc Code Signing):** Do macOS TCC quản lý quyền qua Code Signing Requirement (CSReq), bundle `VXClick.app` bắt buộc phải được ký bằng `codesign --force --deep --sign -` sau khi build để đạt trạng thái `valid on disk` và `satisfies its Designated Requirement`, ngăn chặn triệt để lỗi toggle bật nhưng OS không cấp quyền.
-2. **Đặc tả Mini Status Bar Tự Động Mở Rộng Khi Playback (Dynamic Loop Status Bar):**
-   - Khi ứng dụng chuyển sang trạng thái `PLAYING`: Cửa sổ widget tự động mở rộng thêm một mini status bar nhỏ bên dưới thanh chính:
-     - **Trường hợp 1 (Lặp X lần — Repeat Count):** Hiển thị trạng thái tiến trình `Đã lặp x / X lần` kèm thanh tiến trình 2px sắc nét dưới đáy.
-     - **Trường hợp 2 (Lặp vô tận — Continuous Loop):** Hiển thị dòng trạng thái / tooltip: `Đang lặp liên tục • Nhấn ESC để dừng` (Press ESC to stop).
-   - Khi dừng phát lại (hoàn tất hoặc bấm Stop/ESC), thanh mini tự động thu gọn về đúng kích thước chuẩn `310×38px`.
+2. **Đặc tả Mini Status Bar Tự Động Mở Rộng Khi Playback / Auto Click (Dynamic Status Bar):**
+   - Khi ứng dụng chuyển sang trạng thái `PLAYING` hoặc `AUTOCLICKING`: Cửa sổ widget tự động mở rộng thêm một mini status bar nhỏ bên dưới thanh chính:
+     - **Trường hợp 1 (Playback Macro — Repeat Count):** Hiển thị trạng thái tiến trình `Đã lặp x / X lần` kèm thanh tiến trình 2px sắc nét dưới đáy.
+     - **Trường hợp 2 (Playback Macro — Lặp vô tận):** Hiển thị dòng trạng thái / tooltip: `Đang lặp liên tục • Nhấn ESC để dừng` (Press ESC to stop).
+     - **Trường hợp 3 (Auto Click — Repeat Count):** Hiển thị tiến trình `Đã nhấp x / X lần` kèm thanh tiến trình màu hổ phách (amber).
+     - **Trường hợp 4 (Auto Click — Until Stopped):** Hiển thị trạng thái `Đang tự nhấp #x • ESC để dừng`.
+   - Khi dừng phát lại hoặc dừng auto click (hoàn tất hoặc bấm Stop/ESC), thanh mini tự động thu gọn về đúng kích thước chuẩn `360×38px`.
 3. **An toàn Dữ liệu Tuyệt đối:**
    - Không chứa bất kỳ module mạng (Network Stack) nào ra ngoài internet.
    - Toàn bộ chuỗi macro chỉ lưu trong bộ nhớ tạm (RAM) của phiên làm việc.

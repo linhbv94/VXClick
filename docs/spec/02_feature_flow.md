@@ -76,7 +76,8 @@ Bộ phím tắt độc bản (Zero-Conflict) áp dụng chuẩn hóa đồng nh
 | :--- | :--- | :--- | :--- |
 | **Bật / Dừng Ghi (Rec Toggle)** | `⌥ + ⇧ + ⌘ + R` | `Ctrl + Alt + Shift + R` | Đổi trạng thái giữa Bắt đầu ghi ⟷ Dừng ghi |
 | **Bật / Dừng Phát (Play Toggle)**| `⌥ + ⇧ + ⌘ + P` | `Ctrl + Alt + Shift + P` | Đổi trạng thái giữa Bắt đầu phát ⟷ Dừng phát |
-| **Dừng Khẩn Cấp (Emergency Failsafe)** | `ESC` | `ESC` | **Chỉ kích hoạt khi đang Playback** để ngắt tức thì |
+| **Bật / Dừng Auto Click (Toggle)**| `⌥ + ⇧ + ⌘ + C` | `Ctrl + Alt + Shift + C` | Đổi trạng thái Bắt đầu tự nhấp ⟷ Dừng tự nhấp |
+| **Dừng Khẩn Cấp (Emergency Failsafe)** | `ESC` | `ESC` | **Kích hoạt khi đang Playback hoặc Auto Click** để ngắt tức thì |
 
 ```text
 [Đang ở bất kỳ cửa sổ/ứng dụng nào]
@@ -91,10 +92,15 @@ Bộ phím tắt độc bản (Zero-Conflict) áp dụng chuẩn hóa đồng nh
       │         ├─ Nếu đang Idle_Ready: Kích hoạt Phát lại (Playback Start)
       │         └─ Nếu đang Playing: Dừng Phát lại (Playback Stop)
       │
+      ├─► Nhấn [ ⌥ + ⇧ + ⌘ + C ] (macOS) / [ Ctrl + Alt + Shift + C ] (Windows):
+      │         │
+      │         ├─ Nếu đang Idle_Empty / Idle_Ready: Bắt đầu Tự nhấp (Auto Click Start)
+      │         └─ Nếu đang Autoclicking: Dừng Tự nhấp (Auto Click Stop)
+      │
       └─► Nhấn [ ESC ]:
                 │
                 ├─ Nếu đang Recording: BỎ QUA (Không bắt phím để tránh nuốt phím thao tác)
-                └─ Nếu đang Playing: NGẮT KHẨN CẤP NGAY LẬP TỨC (Failsafe < 1ms)
+                └─ Nếu đang Playing hoặc Autoclicking: NGẮT KHẨN CẤP NGAY LẬP TỨC (Failsafe < 1ms)
 ```
 
 ---
@@ -159,9 +165,41 @@ Bộ phím tắt độc bản (Zero-Conflict) áp dụng chuẩn hóa đồng nh
 
 ---
 
+### 1.6. Luồng 6: Luồng Tự Động Nhấp Chuột Nhanh (Auto Click Fast Flow)
+
+```text
+[Người dùng click nút "Auto Click" (hoặc bấm ⌥⇧⌘C / Ctrl+Alt+Shift+C)]
+      │
+      ▼
+[Hệ thống kiểm tra trạng thái hiện tại & cấu hình trong Settings]
+      │
+      ├─ Cấu hình nạp:
+      │   ├─ Interval: chu kỳ nhấp (mặc định 100ms, có thể chỉnh 10ms - 60000ms)
+      │   ├─ Mouse Button: Phím chuột (Left / Right)
+      │   └─ Repeat: Lặp đến khi dừng (until stopped) HOẶC số lần lặp (repeat count)
+      │
+      ▼
+[Chuyển trạng thái sang AUTOCLICKING]
+      │
+      ├─ Nút Auto Click đổi sang trạng thái hoạt động (màu hổ phách Amber, pulse nhẹ, đếm số click)
+      ├─ Cửa sổ tự động mở rộng (Expand) kích thước dọc từ 38px ──► 62px
+      ├─ Luồng nền Rust inject MouseDown -> sleep 10ms -> MouseUp tại vị trí con trỏ chuột thời gian thực
+      │
+      ├─ Trường hợp A: Đến khi dừng (Until stopped) ──► Mini Bar: "Đang tự nhấp #x • ESC để dừng"
+      └─ Trường hợp B: Theo số lần (Repeat times)  ──► Mini Bar: "Đã nhấp x / X lần" + progress bar
+      │
+      ▼
+[Người dùng bấm nút Auto Click lần nữa HOẶC bấm ⌥⇧⌘C HOẶC bấm ESC HOẶC hoàn thành số lần]
+      │
+      ▼
+[Dừng Auto Click an toàn: Xả phím chuột, Mini Bar hiển thị thông báo đã dừng 1.2s rồi thu gọn về 38px]
+```
+
+---
+
 ## 2. Máy Trạng thái Hữu hạn (Finite State Machine - FSM)
 
-Toàn bộ hệ thống VXClick được điều khiển bởi một Máy Trạng Thái duy nhất trong Rust Core gồm 7 trạng thái vận hành chính xác:
+Toàn bộ hệ thống VXClick được điều khiển bởi một Máy Trạng Thái duy nhất trong Rust Core gồm 8 trạng thái vận hành chính xác:
 
 ```text
                         ┌─────────────────────────┐
@@ -174,33 +212,52 @@ Toàn bộ hệ thống VXClick được điều khiển bởi một Máy Trạn
                         ┌─────────────────────────┐     ┌────────────────────────┐
             ┌──────────►│       IDLE_EMPTY        │     │   PERMISSION_BLOCKED   │
             │           │ (Chưa có bản ghi macro) │     │ (Nút Rec mờ, hiện modal)│
-            │           └────────────┬────────────┘     └────────────┬───────────┘
-            │                        │ Bấm Rec (⌥⇧⌘R)                │ Đã cấp quyền / Relaunch
-            │                        ▼                               │
-            │           ┌─────────────────────────┐                  │
-            │           │        RECORDING        │◄─────────────────┘
-            │           │  (Đang thu thập sự kiện)│
-            │           └────────────┬────────────┘
-            │                        │ Bấm Stop Rec (⌥⇧⌘R)
-            │                        ▼
-            │           ┌─────────────────────────┐
-            │  Ghi đè   │       IDLE_READY        │◄─────────────────┐
-            │  bản mới  │ (Đã có macro sẵn sàng)  │                  │
-            │           └─────┬──────────────▲────┘                  │
-            │                 │              │                       │
-            │   Bấm Play      │              │ Hết chu kỳ lặp X lần  │ Thu gọn
-            │   (⌥⇧⌘P)        ▼              │ (Thu gọn Mini Bar)    │ Mini Bar
-            │           ┌────────────────────┴────┐                  │
-            │           │         PLAYING         │                  │
-            │           │ (Mini Bar tự expand ra) │                  │
-            │           └─────┬──────────────┬────┘                  │
-            │                 │              │                       │
-            │   Bấm Stop      │              │ Kích hoạt phím ESC    │
-            │   (⌥⇧⌘P)        ▼              ▼                       │
-            │           ┌─────────────────────────┐                  │
-            └───────────┤    EMERGENCY_STOPPED    ├──────────────────┘
-                        │ (Xả Ledger & khôi phục) │ (Bảo toàn macro trong RAM)
-                        └─────────────────────────┘
+            │           └─────┬──────────────┬────┘     └────────────┬───────────┘
+            │                 │              │ Bấm Auto Click        │ Đã cấp quyền / Relaunch
+            │                 │              │ (⌥⇧⌘C)                │
+            │                 │              ▼                       │
+            │                 │ ┌─────────────────────────┐          │
+            │                 │ │       AUTOCLICKING      │◄─────────┘ (khi đủ quyền)
+            │                 │ │(Tự nhấp tại vị trí chuột│
+            │                 │ └───┬─────────────────┬───┘
+            │                 │     │ Dừng/Hết lần    │ Bấm ESC
+            │                 │     ▼                 ▼
+            │                 │ ┌─────────────────────────┐
+            │                 │ │    EMERGENCY_STOPPED    │
+            │                 │ └────────────┬────────────┘
+            │                 │ Bấm Rec      │ Khôi phục về Idle
+            │                 │ (⌥⇧⌘R)       ▼
+            │                 │ ┌─────────────────────────┐
+            │                 └►│        RECORDING        │
+            │                   │  (Đang thu thập sự kiện)│
+            │                   └────────────┬────────────┘
+            │                                │ Bấm Stop Rec (⌥⇧⌘R)
+            │                                ▼
+            │                   ┌─────────────────────────┐
+            │  Ghi đè           │       IDLE_READY        │◄─────────────────┐
+            │  bản mới          │ (Đã có macro sẵn sàng)  │                  │
+            │                   └─────┬───────────┬───▲───┘                  │
+            │                         │           │   │                      │
+            │           Bấm Play      │           │   │ Hết chu kỳ lặp X lần │ Thu gọn
+            │           (⌥⇧⌘P)        ▼           │   │ (Thu gọn Mini Bar)   │ Mini Bar
+            │                   ┌───────────┐     │   │                      │
+            │                   │  PLAYING  │     │   │                      │
+            │                   └─────┬─────┘     │   │                      │
+            │                         │           │   │                      │
+            │           Bấm Stop      │           │   │                      │
+            │           (⌥⇧⌘P)        ▼           │   │                      │
+            │                   ┌───────────┐     │   │                      │
+            │                   │  IDLE_... │     │   │                      │
+            │                   └───────────┘     │   │                      │
+            │                                     │   │                      │
+            │               Bấm Auto Click (⌥⇧⌘C) │   │                      │
+            │               chuyển AUTOCLICKING   └───┘                      │
+            │                                                                │
+            │           Bấm ESC khi Playing hoặc Autoclicking                │
+            │                   ┌─────────────────────────┐                  │
+            └───────────────────┤    EMERGENCY_STOPPED    ├──────────────────┘
+                                │ (Xả Ledger & khôi phục) │ (Bảo toàn macro trong RAM)
+                                └─────────────────────────┘
 ```
 
 ---
@@ -219,6 +276,10 @@ Toàn bộ hệ thống VXClick được điều khiển bởi một Máy Trạn
 | `RECORDING` | Click `Stop` hoặc `⌥⇧⌘R` | Buffer = 0 sự kiện | Gỡ bỏ capture hook, thông báo không có sự kiện nào được ghi, nút Play vẫn mờ | `IDLE_EMPTY` |
 | `IDLE_READY` | Click `Play` hoặc `⌥⇧⌘P` | `MacroTimeline.len() > 0` | Mở rộng Mini Expand Bar (62px), tạo playback thread, RAII timer, icon Play sang Stop | `PLAYING` |
 | `IDLE_READY` | Click `Rec` hoặc `⌥⇧⌘R` | - | Xóa timeline cũ trong RAM, chuyển sang thu thập timeline mới | `RECORDING` |
+| `IDLE_EMPTY` / `IDLE_READY` | Click `Auto Click` hoặc `⌥⇧⌘C` | Quyền hợp lệ | Mở rộng Mini Expand Bar (62px), tạo background thread nhấp chuột theo `interval_ms` | `AUTOCLICKING` |
+| `AUTOCLICKING` | Click `Auto Click` hoặc `⌥⇧⌘C` | - | Thu gọn Mini Bar về 38px, ngắt luồng auto click, xả phím chuột, trả về trạng thái trước đó | `IDLE_READY` / `IDLE_EMPTY` |
+| `AUTOCLICKING` | Hoàn tất `repeat_count` lần | `until_stopped = false` | Thu gọn Mini Bar, phát âm báo / thông báo đã hoàn thành số lần | `IDLE_READY` / `IDLE_EMPTY` |
+| `AUTOCLICKING` | Nhấn phím cứng `ESC` | Phím vật lý thật | Ngắt luồng auto click tức thì < 1ms, xả phím chuột, hiển thị thông báo đã dừng [ESC] | `EMERGENCY_STOPPED` |
 | `PLAYING` | Kết thúc `Repeat Count` lần | `Continuous = false` | Thu gọn Mini Bar về 38px, dọn timer, xả Ledger, đổi icon về Play | `IDLE_READY` |
 | `PLAYING` | Click `Stop` hoặc `⌥⇧⌘P` | - | Thu gọn Mini Bar về 38px, ngắt luồng playback, gọi `flush_hardware_state()`, trả về sẵn sàng | `IDLE_READY` |
 | `PLAYING` | Nhấn phím cứng `ESC` | Phím vật lý thật | Kích hoạt cờ ngắt khẩn cấp, Condvar đánh thức < 1ms, xả sạch Ledger, thu gọn Mini Bar | `EMERGENCY_STOPPED` |
@@ -267,7 +328,7 @@ UI (Play Click / Hotkey)  Playback Manager         Tauri Window (Resize)     Hyb
         │── start_playback ─────►│                         │                         │                  │
         │                        │── emit("playback_start")│                         │                  │
         │◄───────────────────────┤                         │                         │                  │
-        │── resize(310, 62) ──────────────────────────────►│                         │                  │
+        │── resize(360, 62) ──────────────────────────────►│                         │                  │
         │   (Expand Mini Bar)    │                         │                         │                  │
         │                        │── Spawn Playback Thread ─────────────────────────►│                  │
         │                        │                         │                         │── Inject Events ─►
@@ -278,7 +339,7 @@ UI (Play Click / Hotkey)  Playback Manager         Tauri Window (Resize)     Hyb
         │                        │                         │                         │                  │
         │   [Hết số lần HOẶC Bấm ESC]                      │                         │                  │
         │                        │◄── Playback Ended ──────┼─────────────────────────┤                  │
-        │── resize(310, 38) ──────────────────────────────►│                         │                  │
+        │── resize(360, 38) ──────────────────────────────►│                         │                  │
         │   (Collapse Mini Bar)  │                         │                         │                  │
         │◄── emit("playback_end")│                         │                         │                  │
 ```
