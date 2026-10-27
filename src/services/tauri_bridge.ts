@@ -5,6 +5,8 @@ import type {
   SystemState,
   SettingsState,
   PlaybackConfig,
+  AutoClickConfig,
+  AutoClickProgressPayload,
   MacroStats,
   PermissionStatus,
   StateChangedPayload,
@@ -18,6 +20,8 @@ export const isTauri = (): boolean => {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 };
 
+export const WIDGET_WIDTH = 360;
+
 // Cấu hình mặc định của ứng dụng
 export const DEFAULT_SETTINGS: SettingsState = {
   play_speed: 1.0,
@@ -26,6 +30,10 @@ export const DEFAULT_SETTINGS: SettingsState = {
   always_on_top: true,
   theme: 'system',
   language: 'vi',
+  autoclick_interval_ms: 100,
+  autoclick_button: 'Left',
+  autoclick_until_stopped: true,
+  autoclick_repeat_count: 100,
 };
 
 // Lưu trữ cấu hình trong LocalStorage làm cache/mock
@@ -65,10 +73,14 @@ class MockMacroEngine {
   private playbackTimer: number | null = null;
   private playbackCurrentLoop: number = 1;
 
+  private autoClickTimer: number | null = null;
+  private autoClickCount: number = 0;
+
   // Listeners
   private stateChangedListeners: Array<(payload: StateChangedPayload) => void> = [];
   private recordingListeners: Array<(payload: RecordingProgressPayload) => void> = [];
   private playbackListeners: Array<(payload: PlaybackProgressPayload) => void> = [];
+  private autoClickListeners: Array<(payload: AutoClickProgressPayload) => void> = [];
   private emergencyListeners: Array<(payload: EmergencyStoppedPayload) => void> = [];
 
   constructor() {
@@ -78,11 +90,15 @@ class MockMacroEngine {
   private setupBrowserHotkeys() {
     if (typeof window === 'undefined') return;
     window.addEventListener('keydown', (e) => {
+      // Loại trừ keyboard autorepeat khi người dùng giữ phím
+      if (e.repeat) return;
+
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+
       // Hotkey Rec: F9 hoặc Cmd+Opt+Shift+R / Ctrl+Alt+Shift+R
       const isRecKey =
         e.key === 'F9' ||
-        ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyR') ||
-        ((e.metaKey || e.altKey) && e.code === 'KeyR');
+        (isCmdOrCtrl && e.altKey && e.shiftKey && e.code === 'KeyR');
       if (isRecKey) {
         e.preventDefault();
         if (this.currentState === 'IDLE_EMPTY' || this.currentState === 'IDLE_READY') {
@@ -95,8 +111,7 @@ class MockMacroEngine {
       // Hotkey Play: F8 hoặc Cmd+Opt+Shift+P / Ctrl+Alt+Shift+P
       const isPlayKey =
         e.key === 'F8' ||
-        ((e.metaKey || e.ctrlKey) && e.altKey && e.code === 'KeyP') ||
-        ((e.metaKey || e.altKey) && e.code === 'KeyP');
+        (isCmdOrCtrl && e.altKey && e.shiftKey && e.code === 'KeyP');
       if (isPlayKey) {
         e.preventDefault();
         if (this.currentState === 'IDLE_READY') {
@@ -110,10 +125,22 @@ class MockMacroEngine {
         }
       }
 
-      // Hotkey ESC: Failsafe khẩn cấp khi đang phát lại
-      if (e.key === 'Escape' && this.currentState === 'PLAYING') {
+      // Hotkey Auto Click: Cmd+Opt+Shift+C / Ctrl+Alt+Shift+C (bắt buộc đủ 3 phím bổ trợ)
+      const isAutoClickKey =
+        isCmdOrCtrl && e.altKey && e.shiftKey && e.code === 'KeyC';
+      if (isAutoClickKey) {
         e.preventDefault();
-        this.triggerEmergencyStop('Nhấn phím cứng ESC ngắt khẩn cấp');
+        if (this.currentState === 'IDLE_EMPTY' || this.currentState === 'IDLE_READY') {
+          this.startAutoClick();
+        } else if (this.currentState === 'AUTOCLICKING') {
+          this.stopAutoClick();
+        }
+      }
+
+      // Hotkey ESC: Failsafe khẩn cấp khi đang phát lại hoặc auto click
+      if (e.key === 'Escape' && (this.currentState === 'PLAYING' || this.currentState === 'AUTOCLICKING')) {
+        e.preventDefault();
+        this.triggerEmergencyStop('esc');
       }
     });
   }
@@ -216,7 +243,48 @@ class MockMacroEngine {
       this.playbackTimer = null;
     }
     this.playbackListeners.forEach((cb) => cb({ loop: 0, total: 0, pct: 0 }));
-    this.notifyState('IDLE_READY');
+    this.notifyState(this.macroStats ? 'IDLE_READY' : 'IDLE_EMPTY');
+  }
+
+  async startAutoClick(config?: AutoClickConfig): Promise<number> {
+    if (this.autoClickTimer) {
+      clearInterval(this.autoClickTimer);
+      this.autoClickTimer = null;
+    }
+
+    const interval = Math.max(10, config?.interval_ms ?? this.settings.autoclick_interval_ms);
+    const untilStopped = config?.until_stopped ?? this.settings.autoclick_until_stopped;
+    const totalClicks = untilStopped ? 0 : (config?.repeat_count ?? this.settings.autoclick_repeat_count);
+
+    this.currentSessionId = Date.now();
+    this.autoClickCount = 0;
+    this.notifyState('AUTOCLICKING');
+
+    this.autoClickTimer = window.setInterval(() => {
+      this.autoClickCount += 1;
+      const pct = totalClicks > 0 ? (this.autoClickCount / totalClicks) * 100 : 0;
+      this.autoClickListeners.forEach((cb) =>
+        cb({
+          current_clicks: this.autoClickCount,
+          total_clicks: totalClicks,
+          pct: Math.min(100, Math.max(0, pct)),
+        })
+      );
+
+      if (!untilStopped && this.autoClickCount >= totalClicks) {
+        this.stopAutoClick();
+      }
+    }, interval);
+
+    return this.currentSessionId;
+  }
+
+  async stopAutoClick(): Promise<void> {
+    if (this.autoClickTimer) {
+      clearInterval(this.autoClickTimer);
+      this.autoClickTimer = null;
+    }
+    this.notifyState(this.macroStats ? 'IDLE_READY' : 'IDLE_EMPTY');
   }
 
   triggerEmergencyStop(reason: string) {
@@ -224,16 +292,19 @@ class MockMacroEngine {
       clearInterval(this.playbackTimer);
       this.playbackTimer = null;
     }
-    this.playbackListeners.forEach((cb) => cb({ loop: 0, total: 0, pct: 0 }));
+    if (this.autoClickTimer) {
+      clearInterval(this.autoClickTimer);
+      this.autoClickTimer = null;
+    }
     this.notifyState('EMERGENCY_STOPPED');
     this.emergencyListeners.forEach((cb) =>
       cb({ reason, timestamp: Date.now() })
     );
 
-    // Tự động khôi phục sau 500ms về IDLE_READY
+    // Tự động khôi phục sau 500ms
     setTimeout(() => {
       if (this.currentState === 'EMERGENCY_STOPPED') {
-        this.notifyState('IDLE_READY');
+        this.notifyState(this.macroStats ? 'IDLE_READY' : 'IDLE_EMPTY');
       }
     }, 500);
   }
@@ -265,6 +336,10 @@ class MockMacroEngine {
 
   onPlaybackProgress(cb: (payload: PlaybackProgressPayload) => void) {
     this.playbackListeners.push(cb);
+  }
+
+  onAutoClickProgress(cb: (payload: AutoClickProgressPayload) => void) {
+    this.autoClickListeners.push(cb);
   }
 
   onEmergencyStopped(cb: (payload: EmergencyStoppedPayload) => void) {
@@ -308,6 +383,22 @@ export async function bridgeStopPlayback(): Promise<void> {
     return invoke<void>('stop_playback');
   }
   return mockEngine.stopPlayback();
+}
+
+export async function bridgeStartAutoClick(config?: AutoClickConfig): Promise<number> {
+  if (isTauri()) {
+    const { invoke } = await import('@tauri-apps/api/core');
+    return invoke<number>('start_autoclick', { config });
+  }
+  return mockEngine.startAutoClick(config);
+}
+
+export async function bridgeStopAutoClick(): Promise<void> {
+  if (isTauri()) {
+    const { invoke } = await import('@tauri-apps/api/core');
+    return invoke<void>('stop_autoclick');
+  }
+  return mockEngine.stopAutoClick();
 }
 
 export async function bridgeGetSettings(): Promise<SettingsState> {
@@ -401,7 +492,7 @@ async function doSyncWindowHeight(
       await win.setPosition(new LogicalPosition(currentLogicalX, restoredY));
     }
     const finalH = Math.max(38, targetHeight);
-    await win.setSize(new LogicalSize(310, finalH));
+    await win.setSize(new LogicalSize(WIDGET_WIDTH, finalH));
     return;
   }
 
@@ -433,7 +524,7 @@ async function doSyncWindowHeight(
       await win.setPosition(
         new LogicalPosition(currentLogicalX, Math.max(workAreaY + 10, newY))
       );
-      await win.setSize(new LogicalSize(310, safeTargetHeight));
+      await win.setSize(new LogicalSize(WIDGET_WIDTH, safeTargetHeight));
     }
   } else {
     // Kiểm tra xem nếu nở xuống dưới thì có chạm đáy không
@@ -444,11 +535,11 @@ async function doSyncWindowHeight(
       const newY = Math.max(workAreaY + 10, currentLogicalY - shift);
       accumulatedUpShift = currentLogicalY - newY;
       await win.setPosition(new LogicalPosition(currentLogicalX, newY));
-      await win.setSize(new LogicalSize(310, safeTargetHeight));
+      await win.setSize(new LogicalSize(WIDGET_WIDTH, safeTargetHeight));
     } else {
       // Nở xuống bình thường
       accumulatedUpShift = 0;
-      await win.setSize(new LogicalSize(310, safeTargetHeight));
+      await win.setSize(new LogicalSize(WIDGET_WIDTH, safeTargetHeight));
     }
   }
 }
@@ -589,6 +680,26 @@ export function bridgeListenPlaybackProgress(
     };
   }
   mockEngine.onPlaybackProgress(cb);
+  return () => {};
+}
+
+export function bridgeListenAutoClickProgress(
+  cb: (payload: AutoClickProgressPayload) => void
+): () => void {
+  if (isTauri()) {
+    let unlistenFn: (() => void) | null = null;
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen<AutoClickProgressPayload>('macro://autoclick_progress', (e) =>
+        cb(e.payload)
+      ).then((u) => {
+        unlistenFn = u;
+      });
+    });
+    return () => {
+      if (unlistenFn) unlistenFn();
+    };
+  }
+  mockEngine.onAutoClickProgress(cb);
   return () => {};
 }
 

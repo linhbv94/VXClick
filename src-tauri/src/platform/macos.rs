@@ -109,9 +109,28 @@ pub fn is_toggle_playback_hotkey(key_code: u16, modifiers: u8) -> bool {
         && (modifiers & MOD_CTRL == 0)
 }
 
+pub fn is_toggle_autoclick_hotkey(key_code: u16, modifiers: u8) -> bool {
+    // ⌥ + ⇧ + ⌘ + C (key_code 0x08, Command + Option/Alt + Shift, không có Control)
+    key_code == 0x08
+        && (modifiers & MOD_CMD != 0)
+        && (modifiers & MOD_ALT != 0)
+        && (modifiers & MOD_SHIFT != 0)
+        && (modifiers & MOD_CTRL == 0)
+}
+
 pub fn is_emergency_stop_hotkey(key_code: u16) -> bool {
     // ESC (key_code 0x35)
     key_code == 0x35
+}
+
+pub fn get_current_mouse_location() -> Option<(i32, i32)> {
+    if let Ok(source) = CGEventSource::new(CGEventSourceStateID::CombinedSessionState) {
+        if let Ok(event) = CGEvent::new(source) {
+            let loc = event.location();
+            return Some((loc.x.round() as i32, loc.y.round() as i32));
+        }
+    }
+    None
 }
 
 pub struct MacEventCapture {
@@ -546,6 +565,7 @@ impl MacEventInjector {
 pub enum GlobalHotkeyTrigger {
     ToggleRecord,
     TogglePlayback,
+    ToggleAutoClick,
     EmergencyStop,
 }
 
@@ -593,6 +613,12 @@ impl MacGlobalHotkeyMonitor {
                         return None;
                     }
 
+                    // Loại trừ autorepeat phím khi người dùng giữ phím để tránh toggle liên tục
+                    let is_autorepeat = cg_event.get_integer_value_field(EventField::KEYBOARD_EVENT_AUTOREPEAT) != 0;
+                    if is_autorepeat {
+                        return None;
+                    }
+
                     let key_code = cg_event.get_integer_value_field(EventField::KEYBOARD_EVENT_KEYCODE) as u16;
                     let flags = cg_event.get_flags();
 
@@ -625,6 +651,12 @@ impl MacGlobalHotkeyMonitor {
                     // 3. Phím ⌥ + ⇧ + ⌘ + P (0x23) -> Phát lại / Dừng phát (QA03)
                     if is_toggle_playback_hotkey(key_code, modifiers) {
                         cb(GlobalHotkeyTrigger::TogglePlayback);
+                        return None;
+                    }
+
+                    // 4. Phím ⌥ + ⇧ + ⌘ + C (0x08) -> Auto Click / Dừng Auto Click
+                    if is_toggle_autoclick_hotkey(key_code, modifiers) {
+                        cb(GlobalHotkeyTrigger::ToggleAutoClick);
                         return None;
                     }
 
@@ -683,20 +715,23 @@ mod tests {
 
     #[test]
     fn test_hotkey_matcher_strict_contract() {
-        // QA03: Khớp chính xác hợp đồng ⌥ + ⇧ + ⌘ + R và ⌥ + ⇧ + ⌘ + P
+        // QA03: Khớp chính xác hợp đồng ⌥ + ⇧ + ⌘ + R, ⌥ + ⇧ + ⌘ + P, ⌥ + ⇧ + ⌘ + C
         let valid_mods = MOD_CMD | MOD_ALT | MOD_SHIFT;
         assert!(is_toggle_record_hotkey(0x0F, valid_mods));
         assert!(is_toggle_playback_hotkey(0x23, valid_mods));
+        assert!(is_toggle_autoclick_hotkey(0x08, valid_mods));
 
         // Thiếu Shift -> BẮT BUỘC trả về false
         let missing_shift = MOD_CMD | MOD_ALT;
         assert!(!is_toggle_record_hotkey(0x0F, missing_shift));
         assert!(!is_toggle_playback_hotkey(0x23, missing_shift));
+        assert!(!is_toggle_autoclick_hotkey(0x08, missing_shift));
 
         // Kèm Control -> BẮT BUỘC trả về false để tránh xung đột app khác
         let extra_ctrl = valid_mods | MOD_CTRL;
         assert!(!is_toggle_record_hotkey(0x0F, extra_ctrl));
         assert!(!is_toggle_playback_hotkey(0x23, extra_ctrl));
+        assert!(!is_toggle_autoclick_hotkey(0x08, extra_ctrl));
 
         // Các alias cũ F8 (0x64), F9 (0x65) -> Đã gỡ bỏ, BẮT BUỘC trả về false
         assert!(!is_toggle_record_hotkey(0x65, 0));

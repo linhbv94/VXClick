@@ -5,6 +5,7 @@ import React from 'react';
 import {
   Play,
   Square,
+  MousePointer2,
   Pin,
   PinOff,
   Settings2,
@@ -22,9 +23,11 @@ interface MainBarProps {
   language: LanguageMode;
   recordingElapsedFormatted?: string;
   playbackProgress?: PlaybackProgressPayload;
+  autoClickCount?: number;
   hasUpdateAvailable?: boolean;
   onToggleRecord: () => void;
   onTogglePlay: () => void;
+  onToggleAutoClick: () => void;
   onTogglePin: () => void;
   onToggleSetting: () => void;
   onMinimize: () => void;
@@ -44,9 +47,11 @@ export const MainBar: React.FC<MainBarProps> = ({
   language,
   recordingElapsedFormatted,
   playbackProgress,
+  autoClickCount,
   hasUpdateAvailable = false,
   onToggleRecord,
   onTogglePlay,
+  onToggleAutoClick,
   onTogglePin,
   onToggleSetting,
   onMinimize,
@@ -57,6 +62,7 @@ export const MainBar: React.FC<MainBarProps> = ({
 }) => {
   const isRecording = systemState === 'RECORDING';
   const isPlaying = systemState === 'PLAYING';
+  const isAutoClicking = systemState === 'AUTOCLICKING';
   const isPermissionBlocked = systemState === 'PERMISSION_BLOCKED';
   const hasMacro = systemState === 'IDLE_READY' || isPlaying;
 
@@ -113,13 +119,13 @@ export const MainBar: React.FC<MainBarProps> = ({
         </div>
       </div>
 
-      {/* 4 Nút Hành động Cốt lõi (Core Action Buttons) */}
+      {/* 5 Nút Hành động Cốt lõi (Core Action Buttons) */}
       <div className="flex items-center gap-1 no-drag" style={noDragStyle}>
         {/* Nút 1: Rec (F9 / Cmd+Option+R) */}
         <button
           type="button"
           onClick={onToggleRecord}
-          disabled={isPlaying}
+          disabled={isPlaying || isAutoClicking}
           title={
             isPermissionBlocked
               ? t('permission_blocked_title', language)
@@ -127,10 +133,10 @@ export const MainBar: React.FC<MainBarProps> = ({
               ? t('rec_stop_title', language)
               : t('rec_start_title', language)
           }
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all active:scale-95 whitespace-nowrap shrink-0 ${
             isRecording
               ? 'bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/40 shadow-xs shadow-rose-500/20'
-              : isPlaying
+              : (isPlaying || isAutoClicking)
               ? 'opacity-30 cursor-not-allowed text-slate-400 dark:text-slate-500'
               : isPermissionBlocked
               ? 'opacity-40 hover:opacity-80 text-slate-400 dark:text-slate-500 border border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-black/5 dark:hover:bg-white/5'
@@ -139,20 +145,20 @@ export const MainBar: React.FC<MainBarProps> = ({
         >
           {isRecording ? (
             <>
-              <span className="w-2.5 h-2.5 rounded-xs bg-rose-500 animate-pulse shadow-sm shadow-rose-500/80" />
-              <span className="font-mono text-[11px] font-semibold">
+              <span className="w-2.5 h-2.5 rounded-xs bg-rose-500 animate-pulse shadow-sm shadow-rose-500/80 shrink-0" />
+              <span className="font-mono text-[11px] font-semibold whitespace-nowrap">
                 {recordingElapsedFormatted || t('stop_button', language)}
               </span>
             </>
           ) : isPermissionBlocked ? (
             <>
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 opacity-60" />
-              <span>{t('rec_button', language)}</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-slate-500 opacity-60 shrink-0" />
+              <span className="whitespace-nowrap">{t('rec_button', language)}</span>
             </>
           ) : (
             <>
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/60" />
-              <span>{t('rec_button', language)}</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-500/60 shrink-0" />
+              <span className="whitespace-nowrap">{t('rec_button', language)}</span>
             </>
           )}
         </button>
@@ -161,7 +167,7 @@ export const MainBar: React.FC<MainBarProps> = ({
         <button
           type="button"
           onClick={onTogglePlay}
-          disabled={!hasMacro && !isPlaying}
+          disabled={(!hasMacro && !isPlaying) || isAutoClicking}
           title={
             isPlaying
               ? t('play_stop_title', language)
@@ -169,23 +175,60 @@ export const MainBar: React.FC<MainBarProps> = ({
               ? t('play_start_title', language)
               : t('play_no_macro', language)
           }
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all active:scale-95 whitespace-nowrap shrink-0 ${
             isPlaying
               ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40 shadow-xs shadow-emerald-500/20'
-              : hasMacro
+              : hasMacro && !isAutoClicking
               ? 'hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 border border-transparent'
               : 'opacity-30 cursor-not-allowed text-slate-400 dark:text-slate-500'
           }`}
         >
           {isPlaying ? (
             <>
-              <Square className="w-2.5 h-2.5 fill-emerald-500 dark:fill-emerald-400 text-emerald-500 dark:text-emerald-400 animate-pulse" />
-              <span className="font-mono text-[11px] font-semibold">{t('stop_button', language)}</span>
+              <Square className="w-2.5 h-2.5 fill-emerald-500 dark:fill-emerald-400 text-emerald-500 dark:text-emerald-400 animate-pulse shrink-0" />
+              <span className="font-mono text-[11px] font-semibold whitespace-nowrap">{t('stop_button', language)}</span>
             </>
           ) : (
             <>
-              <Play className="w-3.5 h-3.5 fill-current text-current" />
-              <span>{t('play_button', language)}</span>
+              <Play className="w-3.5 h-3.5 fill-current text-current shrink-0" />
+              <span className="whitespace-nowrap">{t('play_button', language)}</span>
+            </>
+          )}
+        </button>
+
+        {/* Nút 3: Auto Click (⌥⇧⌘C) */}
+        <button
+          type="button"
+          onClick={onToggleAutoClick}
+          disabled={isRecording || isPlaying}
+          title={
+            isPermissionBlocked
+              ? t('permission_blocked_title', language)
+              : isAutoClicking
+              ? t('autoclick_stop_title', language)
+              : t('autoclick_start_title', language)
+          }
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all active:scale-95 whitespace-nowrap shrink-0 ${
+            isAutoClicking
+              ? 'bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/40 shadow-xs shadow-amber-500/20'
+              : (isRecording || isPlaying)
+              ? 'opacity-30 cursor-not-allowed text-slate-400 dark:text-slate-500'
+              : isPermissionBlocked
+              ? 'opacity-40 hover:opacity-80 text-slate-400 dark:text-slate-500 border border-transparent hover:border-slate-300 dark:hover:border-slate-700 hover:bg-black/5 dark:hover:bg-white/5'
+              : 'hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 border border-transparent'
+          }`}
+        >
+          {isAutoClicking ? (
+            <>
+              <Square className="w-2.5 h-2.5 fill-amber-500 dark:fill-amber-400 text-amber-500 dark:text-amber-400 animate-pulse shrink-0" />
+              <span className="font-mono text-[11px] font-semibold whitespace-nowrap">
+                {autoClickCount && autoClickCount > 0 ? `#${autoClickCount}` : t('stop_button', language)}
+              </span>
+            </>
+          ) : (
+            <>
+              <MousePointer2 className="w-3.5 h-3.5 fill-current text-current shrink-0" />
+              <span className="whitespace-nowrap">{t('autoclick_button', language)}</span>
             </>
           )}
         </button>

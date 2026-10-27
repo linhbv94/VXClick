@@ -21,11 +21,16 @@ pub fn get_screen_topology() -> ScreenTopology {
     }
 }
 
+pub fn get_current_mouse_location() -> Option<(i32, i32)> {
+    None
+}
+
 /// Các sự kiện kích hoạt phím tắt toàn cục
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GlobalHotkeyTrigger {
     ToggleRecord,
     TogglePlayback,
+    ToggleAutoClick,
     EmergencyStop,
 }
 

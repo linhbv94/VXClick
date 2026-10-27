@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
+  MousePointer2,
 } from 'lucide-react';
 import type { SettingsState, ThemeMode, LanguageMode } from '../types/macro';
 import { t } from '../i18n/translations';
@@ -38,6 +39,7 @@ interface SettingsPopoverProps {
 }
 
 const SPEED_PRESETS = [0.5, 1.0, 2.0, 5.0, 10.0];
+const INTERVAL_PRESETS = [50, 100, 200, 500, 1000];
 
 export const SettingsPopover: React.FC<SettingsPopoverProps> = ({
   settings,
@@ -52,10 +54,25 @@ export const SettingsPopover: React.FC<SettingsPopoverProps> = ({
   const [isCustomSpeed, setIsCustomSpeed] = useState(
     !SPEED_PRESETS.includes(settings.play_speed)
   );
+  const [isCustomInterval, setIsCustomInterval] = useState(
+    !INTERVAL_PRESETS.includes(settings.autoclick_interval_ms)
+  );
 
   const handleSpeedPreset = (speed: number) => {
     setIsCustomSpeed(false);
     onUpdateSettings({ ...settings, play_speed: speed });
+  };
+
+  const handleIntervalPreset = (interval: number) => {
+    setIsCustomInterval(false);
+    onUpdateSettings({ ...settings, autoclick_interval_ms: interval });
+  };
+
+  const handleCustomIntervalChange = (val: string) => {
+    const num = parseInt(val, 10);
+    if (!isNaN(num) && num > 0) {
+      onUpdateSettings({ ...settings, autoclick_interval_ms: Math.min(60000, num) });
+    }
   };
 
   const handleCustomSpeedChange = (val: string) => {
@@ -90,6 +107,26 @@ export const SettingsPopover: React.FC<SettingsPopoverProps> = ({
     const val = parseInt(e.target.value, 10);
     if (!isNaN(val) && val >= 1) {
       onUpdateSettings({ ...settings, repeat_count: Math.min(9999, val) });
+    }
+  };
+
+  const handleAutoClickButtonChange = (button: 'Left' | 'Right') => {
+    onUpdateSettings({ ...settings, autoclick_button: button });
+  };
+
+  const handleAutoClickUntilStoppedToggle = () => {
+    onUpdateSettings({ ...settings, autoclick_until_stopped: !settings.autoclick_until_stopped });
+  };
+
+  const handleAutoClickRepeatStep = (delta: number) => {
+    const nextCount = Math.max(1, Math.min(999999, settings.autoclick_repeat_count + delta));
+    onUpdateSettings({ ...settings, autoclick_repeat_count: nextCount });
+  };
+
+  const handleAutoClickRepeatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10);
+    if (!isNaN(val) && val >= 1) {
+      onUpdateSettings({ ...settings, autoclick_repeat_count: Math.min(999999, val) });
     }
   };
 
@@ -230,6 +267,175 @@ export const SettingsPopover: React.FC<SettingsPopoverProps> = ({
             type="button"
             onClick={() => handleRepeatStep(1)}
             disabled={settings.continuous || settings.repeat_count >= 9999}
+            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-30"
+          >
+            <Plus className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Phân cách / Header nhóm Auto Click */}
+      <div className="pt-2 border-t border-black/10 dark:border-white/10 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+          <MousePointer2 className="w-3.5 h-3.5 fill-current text-current" />
+          <span>{t('autoclick_section_header', lang)}</span>
+        </div>
+        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+          ⌥⇧⌘C
+        </span>
+      </div>
+
+      {/* Auto Click: Chu kỳ nhấp (Click Interval) */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
+          <span>{t('autoclick_interval_label', lang)}</span>
+          <span className="font-mono text-amber-600 dark:text-amber-400 font-semibold">
+            {settings.autoclick_interval_ms} ms
+          </span>
+        </div>
+        <div className="grid grid-cols-6 gap-1">
+          {INTERVAL_PRESETS.map((preset) => {
+            const isSelected = !isCustomInterval && settings.autoclick_interval_ms === preset;
+            return (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => handleIntervalPreset(preset)}
+                className={`py-1 text-[11px] font-mono rounded-md font-medium transition-all ${
+                  isSelected
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs shadow-amber-400/50'
+                    : 'bg-slate-200/80 hover:bg-slate-300 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white'
+                }`}
+              >
+                {preset >= 1000 ? `${preset / 1000}s` : `${preset}ms`}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setIsCustomInterval(true)}
+            className={`py-1 text-[11px] rounded-md font-medium transition-all ${
+              isCustomInterval
+                ? 'bg-amber-500 text-slate-950 font-bold shadow-xs shadow-amber-400/50'
+                : 'bg-slate-200/80 hover:bg-slate-300 text-slate-700 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white'
+            }`}
+          >
+            {t('speed_custom', lang)}
+          </button>
+        </div>
+        {isCustomInterval && (
+          <div className="flex items-center gap-2 mt-0.5">
+            <input
+              type="range"
+              min="10"
+              max="5000"
+              step="10"
+              value={settings.autoclick_interval_ms}
+              onChange={(e) => handleCustomIntervalChange(e.target.value)}
+              className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+            />
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="10"
+                max="60000"
+                value={settings.autoclick_interval_ms}
+                onChange={(e) => handleCustomIntervalChange(e.target.value)}
+                className="w-16 px-1.5 py-0.5 text-right font-mono text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-amber-500"
+              />
+              <span className="text-[10px] text-slate-400">ms</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Auto Click: Phím chuột (Mouse Button: Left / Right) */}
+      <div className="flex items-center justify-between py-1 border-t border-black/5 dark:border-white/5">
+        <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
+          {t('autoclick_button_label', lang)}
+        </span>
+        <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-200/80 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => handleAutoClickButtonChange('Left')}
+            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+              settings.autoclick_button === 'Left'
+                ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-xs font-semibold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            {t('autoclick_button_left', lang)}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAutoClickButtonChange('Right')}
+            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+              settings.autoclick_button === 'Right'
+                ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-xs font-semibold'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            {t('autoclick_button_right', lang)}
+          </button>
+        </div>
+      </div>
+
+      {/* Auto Click: Lặp lại (Repeat: Cho đến khi dừng / Số lần) */}
+      <div className="flex items-center justify-between py-1 border-t border-black/5 dark:border-white/5">
+        <div>
+          <div className="text-xs font-medium text-slate-800 dark:text-slate-200">
+            {t('autoclick_until_stopped_label', lang)}
+          </div>
+          <div className="text-[10px] text-slate-500 dark:text-slate-400">
+            {t('autoclick_until_stopped_desc', lang)}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleAutoClickUntilStoppedToggle}
+          className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${
+            settings.autoclick_until_stopped ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
+          }`}
+        >
+          <div
+            className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform ${
+              settings.autoclick_until_stopped ? 'translate-x-4' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Auto Click: Số lần lặp (nếu không lặp vô hạn) */}
+      <div
+        className={`flex items-center justify-between py-1 transition-opacity ${
+          settings.autoclick_until_stopped ? 'opacity-40 pointer-events-none' : 'opacity-100'
+        }`}
+      >
+        <span className="text-xs font-medium text-slate-800 dark:text-slate-200">
+          {t('autoclick_repeat_label', lang)}
+        </span>
+        <div className="flex items-center rounded-lg border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => handleAutoClickRepeatStep(-10)}
+            disabled={settings.autoclick_until_stopped || settings.autoclick_repeat_count <= 1}
+            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-30"
+          >
+            <Minus className="w-3 h-3" />
+          </button>
+          <input
+            type="number"
+            min="1"
+            max="999999"
+            disabled={settings.autoclick_until_stopped}
+            value={settings.autoclick_repeat_count}
+            onChange={handleAutoClickRepeatChange}
+            className="w-14 text-center font-mono text-xs bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => handleAutoClickRepeatStep(10)}
+            disabled={settings.autoclick_until_stopped || settings.autoclick_repeat_count >= 999999}
             className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-30"
           >
             <Plus className="w-3 h-3" />

@@ -14,6 +14,7 @@ import type {
   SettingsState,
   ActiveView,
   PlaybackProgressPayload,
+  AutoClickProgressPayload,
 } from './types/macro';
 import {
   isTauri,
@@ -22,6 +23,8 @@ import {
   bridgeStopRecording,
   bridgeStartPlayback,
   bridgeStopPlayback,
+  bridgeStartAutoClick,
+  bridgeStopAutoClick,
   bridgeGetSettings,
   bridgeSetSettings,
   bridgeSetAlwaysOnTop,
@@ -37,6 +40,7 @@ import {
   bridgeListenStateChanged,
   bridgeListenRecordingEvent,
   bridgeListenPlaybackProgress,
+  bridgeListenAutoClickProgress,
   bridgeListenEmergencyStopped,
 } from './services/tauri_bridge';
 import { useAppUpdater } from './services/app_updater';
@@ -52,17 +56,25 @@ export function App() {
   const [playbackProgress, setPlaybackProgress] = useState<
     PlaybackProgressPayload | undefined
   >(undefined);
+  const [autoClickProgress, setAutoClickProgress] = useState<
+    AutoClickProgressPayload | undefined
+  >(undefined);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [stoppedNotice, setStoppedNotice] = useState<StoppedNoticeInfo | null>(null);
   const [isCheckingPermission, setIsCheckingPermission] = useState(false);
 
   const shellRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef(settings);
+  const systemStateRef = useRef(systemState);
   const stoppedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
+
+  useEffect(() => {
+    systemStateRef.current = systemState;
+  }, [systemState]);
 
   // Quản lý Theme: System / Dark / Light
   useEffect(() => {
@@ -180,6 +192,25 @@ export function App() {
             }
             return prevNotice;
           });
+        } else if (
+          prevState === 'AUTOCLICKING' &&
+          (payload.state === 'IDLE_READY' || payload.state === 'IDLE_EMPTY')
+        ) {
+          // Khi auto click hoàn thành đủ số lần lặp tự nhiên
+          setStoppedNotice((prevNotice) => {
+            if (!prevNotice) {
+              const currentSettings = settingsRef.current;
+              const msg = t('status_autoclick_completed', currentSettings.language);
+              if (stoppedTimeoutRef.current) {
+                clearTimeout(stoppedTimeoutRef.current);
+              }
+              stoppedTimeoutRef.current = setTimeout(() => {
+                setStoppedNotice(null);
+              }, 1200);
+              return { message: msg, isEsc: false };
+            }
+            return prevNotice;
+          });
         }
         return payload.state;
       });
@@ -204,16 +235,23 @@ export function App() {
       setPlaybackProgress(payload);
     });
 
+    const unlistenAutoClick = bridgeListenAutoClickProgress((payload) => {
+      setAutoClickProgress(payload);
+    });
+
     const unlistenEmergency = bridgeListenEmergencyStopped((payload) => {
       const currentSettings = settingsRef.current;
       const isDoomsday = currentSettings.continuous;
+      const currentSt = systemStateRef.current;
       const isEsc =
         payload.reason === 'esc' ||
         payload.reason.toLowerCase().includes('esc');
       const message = isEsc
-        ? isDoomsday
-          ? t('status_stopped_doomsday_esc', currentSettings.language)
-          : t('status_stopped_esc', currentSettings.language)
+        ? currentSt === 'AUTOCLICKING'
+          ? t('status_stopped_autoclick_esc', currentSettings.language)
+          : isDoomsday
+            ? t('status_stopped_doomsday_esc', currentSettings.language)
+            : t('status_stopped_esc', currentSettings.language)
         : payload.reason;
 
       setStoppedNotice({ message, isEsc });
@@ -234,6 +272,7 @@ export function App() {
       unlistenState();
       unlistenRec();
       unlistenPlay();
+      unlistenAutoClick();
       unlistenEmergency();
     };
   }, [checkPermissions]);
@@ -353,6 +392,51 @@ export function App() {
     }
   }, [settings]);
 
+  // Hành động 4: Bật / Dừng Auto Click (⌥⇧⌘C / Ctrl+Alt+Shift+C)
+  const handleToggleAutoClick = useCallback(async () => {
+    if (isWindows) {
+      showToast(t('windows_dummy_notice', settings.language));
+      return;
+    }
+
+    if (systemState === 'PERMISSION_BLOCKED') {
+      setActiveView('permission');
+      showToast(t('permission_blocked_title', settings.language));
+      return;
+    }
+
+    if (systemState === 'AUTOCLICKING') {
+      try {
+        await bridgeStopAutoClick();
+        const currentSettings = settingsRef.current;
+        const message = t('status_stopped_autoclick_manual', currentSettings.language);
+        setStoppedNotice({ message, isEsc: false });
+        if (stoppedTimeoutRef.current) {
+          clearTimeout(stoppedTimeoutRef.current);
+        }
+        stoppedTimeoutRef.current = setTimeout(() => {
+          setStoppedNotice(null);
+        }, 1200);
+      } catch (err: unknown) {
+        showToast(err instanceof Error ? err.message : 'Lỗi khi dừng auto click');
+      }
+    } else if (systemState === 'IDLE_EMPTY' || systemState === 'IDLE_READY') {
+      try {
+        setActiveView('main');
+        setAutoClickProgress(undefined);
+        await bridgeStartAutoClick({
+          interval_ms: settings.autoclick_interval_ms,
+          button: settings.autoclick_button,
+          until_stopped: settings.autoclick_until_stopped,
+          repeat_count: settings.autoclick_repeat_count,
+        });
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        showToast(errMsg || 'Lỗi khi bắt đầu auto click');
+      }
+    }
+  }, [isWindows, systemState, settings, showToast]);
+
   // Cập nhật cấu hình từ Popover
   const handleUpdateSettings = useCallback(
     async (newSettings: SettingsState) => {
@@ -379,9 +463,11 @@ export function App() {
       language={settings.language}
       recordingElapsedFormatted={recordingElapsed}
       playbackProgress={playbackProgress}
+      autoClickCount={autoClickProgress?.current_clicks}
       hasUpdateAvailable={hasUpdateAvailable}
       onToggleRecord={handleToggleRecord}
       onTogglePlay={handleTogglePlay}
+      onToggleAutoClick={handleToggleAutoClick}
       onTogglePin={handleTogglePin}
       onToggleSetting={() =>
         setActiveView((prev) => (prev === 'main' ? 'settings' : 'main'))
@@ -451,14 +537,18 @@ export function App() {
       {/* MainBar luôn được pin cố định ở trên cùng */}
       {mainBarNode}
 
-      {/* Mini Status Bar tự động mở rộng khi Playback hoặc hiển thị trạng thái dừng */}
-      {(systemState === 'PLAYING' || !!stoppedNotice) && activeView === 'main' && (
+      {/* Mini Status Bar tự động mở rộng khi Playback hoặc Auto Click hoặc hiển thị trạng thái dừng */}
+      {(systemState === 'PLAYING' || systemState === 'AUTOCLICKING' || !!stoppedNotice) && activeView === 'main' && (
         <PlaybackMiniBar
+          mode={systemState === 'AUTOCLICKING' ? 'autoclick' : 'playback'}
           isContinuous={settings.continuous}
           repeatCount={settings.repeat_count}
           progress={playbackProgress}
+          autoclickProgress={autoClickProgress}
+          autoclickUntilStopped={settings.autoclick_until_stopped}
+          autoclickRepeatCount={settings.autoclick_repeat_count}
           language={settings.language}
-          onStop={handleTogglePlay}
+          onStop={systemState === 'AUTOCLICKING' ? handleToggleAutoClick : handleTogglePlay}
           stoppedNotice={stoppedNotice}
         />
       )}
@@ -471,7 +561,7 @@ export function App() {
       )}
 
       {/* Thông báo dạng dải bottom trong main view (tự động expand cửa sổ 62px, không bao giờ che đè nút) */}
-      {toastMessage && activeView === 'main' && systemState !== 'PLAYING' && !stoppedNotice && (
+      {toastMessage && activeView === 'main' && systemState !== 'PLAYING' && systemState !== 'AUTOCLICKING' && !stoppedNotice && (
         <div className="w-full h-[24px] px-2.5 flex items-center justify-center bg-slate-100/95 dark:bg-slate-950/95 border-t border-cyan-500/30 text-[10.5px] font-medium text-slate-700 dark:text-slate-300 select-none drag-region overflow-hidden animate-in fade-in slide-in-from-top-1">
           <span className="truncate">{toastMessage}</span>
         </div>
@@ -502,17 +592,17 @@ export function App() {
             VXClick — Live Preview
           </span>
           <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
-            310 × 38px
+            360 × 38px
           </span>
         </div>
         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
           {settings.language === 'en' ? (
             <>
-              Click buttons or hotkeys <span className="font-mono text-cyan-600 dark:text-cyan-300">F9</span> (Rec) • <span className="font-mono text-emerald-600 dark:text-emerald-300">F8</span> (Play) • <span className="font-mono text-rose-500 dark:text-rose-300">ESC</span> (Stop)
+              Click buttons or hotkeys <span className="font-mono text-cyan-600 dark:text-cyan-300">⌥⇧⌘R</span> (Rec) • <span className="font-mono text-emerald-600 dark:text-emerald-300">⌥⇧⌘P</span> (Play) • <span className="font-mono text-amber-500 dark:text-amber-400">⌥⇧⌘C</span> (Auto Click) • <span className="font-mono text-rose-500 dark:text-rose-300">ESC</span> (Stop)
             </>
           ) : (
             <>
-              Bấm các nút bên dưới hoặc phím tắt <span className="font-mono text-cyan-600 dark:text-cyan-300">F9</span> (Rec) • <span className="font-mono text-emerald-600 dark:text-emerald-300">F8</span> (Play) • <span className="font-mono text-rose-500 dark:text-rose-300">ESC</span> (Ngắt khẩn cấp)
+              Bấm các nút bên dưới hoặc phím tắt <span className="font-mono text-cyan-600 dark:text-cyan-300">⌥⇧⌘R</span> (Rec) • <span className="font-mono text-emerald-600 dark:text-emerald-300">⌥⇧⌘P</span> (Play) • <span className="font-mono text-amber-500 dark:text-amber-400">⌥⇧⌘C</span> (Auto Click) • <span className="font-mono text-rose-500 dark:text-rose-300">ESC</span> (Ngắt khẩn cấp)
             </>
           )}
         </p>

@@ -26,8 +26,7 @@ action = sys.argv[1]
 if action == 'install':
     cert_b64 = os.environ.get('VXCLICK_MACOS_CERTIFICATE')
     if not cert_b64:
-        print('VXCLICK_MACOS_CERTIFICATE not set; skipping certificate-bound keychain install.')
-        sys.exit(0)
+        raise RuntimeError('VXCLICK_MACOS_CERTIFICATE required; refusing ad-hoc fallback')
 
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     keychain = root / 'release.keychain-db'

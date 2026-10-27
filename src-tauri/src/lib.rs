@@ -9,7 +9,7 @@ pub mod types;
 
 use engine::MacroEngine;
 use tauri::Manager;
-use types::{MacroStats, PermissionStatus, PlaybackConfig, SettingsState};
+use types::{AutoClickConfig, MacroStats, PermissionStatus, PlaybackConfig, SettingsState};
 
 pub struct AppState {
     pub engine: MacroEngine,
@@ -34,6 +34,16 @@ fn start_playback(config: PlaybackConfig, state: tauri::State<'_, AppState>) -> 
 #[tauri::command]
 fn stop_playback(state: tauri::State<'_, AppState>) -> Result<(), String> {
     state.engine.stop_playback()
+}
+
+#[tauri::command]
+fn start_autoclick(config: Option<AutoClickConfig>, state: tauri::State<'_, AppState>) -> Result<u64, String> {
+    state.engine.start_autoclick(config)
+}
+
+#[tauri::command]
+fn stop_autoclick(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    state.engine.stop_autoclick()
 }
 
 #[tauri::command]
@@ -140,7 +150,7 @@ fn sync_mac_traffic_lights(window: &tauri::WebviewWindow) {
                         if is_hidden == YES {
                             continue;
                         }
-                        // A 12pt bezel has native padding (SDK15.5: frame14x16).
+                        // Native geometry depends on SDK/OS; preserve the SDK27.0 AppKit reference.
                         // Restore pristine AppKit geometry, never scale the bezel to 12x12.
                         let reference: id = msg_send![class!(NSWindow),
                             standardWindowButton: *btn_id forStyleMask: style_mask];
@@ -206,6 +216,8 @@ pub fn run() {
             stop_recording,
             start_playback,
             stop_playback,
+            start_autoclick,
+            stop_autoclick,
             get_macro_stats,
             get_settings,
             set_settings,
