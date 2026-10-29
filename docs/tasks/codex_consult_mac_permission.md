@@ -6,7 +6,7 @@
 ---
 
 ## 1. Bối cảnh dự án
-- **Ứng dụng:** VXClick (Macro Recorder & Automation Engine siêu nhẹ trên zTools).
+- **Ứng dụng:** VXClick (Macro Recorder & Automation Engine siêu nhẹ trên VXUtilities).
 - **Công nghệ:** Rust 2024 Native Core Engine + Tauri v2 + React 19 + TypeScript.
 - **Môi trường:** macOS (Apple Silicon / Intel, macOS Sonoma / Sequoia).
 - **Tính năng liên quan:**
@@ -54,6 +54,6 @@
    - Làm thế nào để cấu hình hoặc xử lý để macOS TCC quản lý ổn định nhất trong quá trình phát triển và sử dụng thực tế?
 
 4. **Đề xuất Kiến trúc UX & Code Chỉnh sửa Tối ưu:**
-   - Cách làm mờ nút Rec chuẩn phong cách zTools / vx* (nút bị mờ/dimmed, opacity thấp, biểu tượng khóa nhẹ hoặc xám mờ, hover tooltip chỉ rõ cần cấp quyền, bấm vào mở modal hướng dẫn).
+   - Cách làm mờ nút Rec chuẩn phong cách VXUtilities / vx* (nút bị mờ/dimmed, opacity thấp, biểu tượng khóa nhẹ hoặc xám mờ, hover tooltip chỉ rõ cần cấp quyền, bấm vào mở modal hướng dẫn).
    - Thiết kế lại luồng trong `PermissionModal.tsx` và backend Rust: Nếu cần restart, hướng dẫn rõ ràng: Bước 1: Mở Cài đặt và bật switch; Bước 2: Bấm nút "Khởi động lại VXClick" để hoàn tất.
    - Code snippet đề xuất cho Rust và React.

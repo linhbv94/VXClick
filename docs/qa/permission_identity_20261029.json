@@ -1,0 +1,162 @@
+{
+  "date": "2026-10-29",
+  "os": "26.7",
+  "architecture": "arm64",
+  "runtime_permission_checked": false,
+  "updater_retention_checked": false,
+  "apps": [
+    {
+      "path": "/Applications/VXClick.app",
+      "checks": [
+        {
+          "command": [
+            "/usr/bin/codesign",
+            "-dvv",
+            "-r-",
+            "/Applications/VXClick.app"
+          ],
+          "exit_code": 0,
+          "stdout": "# designated => cdhash H\"7e09b8df2382bd4e87ea7b5184f5d765e445e84e\"\n",
+          "stderr": "Executable=/Applications/VXClick.app/Contents/MacOS/vxclick\nIdentifier=com.vxclick.desktop\nFormat=app bundle with Mach-O thin (arm64)\nCodeDirectory v=20500 size=29204 flags=0x10002(adhoc,runtime) hashes=906+3 location=embedded\nSignature=adhoc\nInfo.plist entries=14\nTeamIdentifier=not set\nRuntime Version=27.0.0\nSealed Resources version=2 rules=13 files=1\n"
+        },
+        {
+          "command": [
+            "/usr/bin/codesign",
+            "--verify",
+            "--deep",
+            "--strict",
+            "--verbose=2",
+            "/Applications/VXClick.app"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": "/Applications/VXClick.app: valid on disk\n/Applications/VXClick.app: satisfies its Designated Requirement\n"
+        },
+        {
+          "command": [
+            "shasum",
+            "-a",
+            "256",
+            "/Applications/VXClick.app/Contents/MacOS/vxclick"
+          ],
+          "exit_code": 0,
+          "stdout": "ba3d1e4b781b265a5e7b6525de4c0759cb27ebd8c667f700bb6be13b78cffee6  /Applications/VXClick.app/Contents/MacOS/vxclick\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "node",
+            "vxclick/scripts/verify_macos_identity.mjs",
+            "/Applications/VXClick.app"
+          ],
+          "exit_code": 1,
+          "stdout": "",
+          "stderr": "node:internal/modules/run_main:107\n    triggerUncaughtException(\n    ^\n\nAssertionError [ERR_ASSERTION]: Sai bundle identity\n    at assertMacosRequirement (file:///Users/vic/_Work/VXUtilities/vxclick/scripts/verify_macos_identity.mjs:10:10)\n    at verifyMacosIdentity (file:///Users/vic/_Work/VXUtilities/vxclick/scripts/verify_macos_identity.mjs:21:7)\n    at file:///Users/vic/_Work/VXUtilities/vxclick/scripts/verify_macos_identity.mjs:28:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: '# designated => cdhash H\"7e09b8df2382bd4e87ea7b5184f5d765e445e84e\"',\n  expected: /identifier \"com\\.vxclick\\.desktop\"/,\n  operator: 'match',\n  diff: 'simple'\n}\n\nNode.js v26.5.0\n"
+        }
+      ]
+    },
+    {
+      "path": "/Users/vic/_Work/VXUtilities/vxclick/src-tauri/target/release/bundle/macos/VXClick.app",
+      "checks": [
+        {
+          "command": [
+            "/usr/bin/codesign",
+            "-dvv",
+            "-r-",
+            "/Users/vic/_Work/VXUtilities/vxclick/src-tauri/target/release/bundle/macos/VXClick.app"
+          ],
+          "exit_code": 0,
+          "stdout": "# designated => cdhash H\"7e09b8df2382bd4e87ea7b5184f5d765e445e84e\"\n",
+          "stderr": "Executable=/Users/vic/_Work/VXUtilities/vxclick/src-tauri/target/release/bundle/macos/VXClick.app/Contents/MacOS/vxclick\nIdentifier=com.vxclick.desktop\nFormat=app bundle with Mach-O thin (arm64)\nCodeDirectory v=20500 size=29204 flags=0x10002(adhoc,runtime) hashes=906+3 location=embedded\nSignature=adhoc\nInfo.plist entries=14\nTeamIdentifier=not set\nRuntime Version=27.0.0\nSealed Resources version=2 rules=13 files=1\n"
+        },
+        {
+          "command": [
+            "/usr/bin/codesign",
+            "--verify",
+            "--deep",
+            "--strict",
+            "--verbose=2",
+            "/Users/vic/_Work/VXUtilities/vxclick/src-tauri/target/release/bundle/macos/VXClick.app"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": "/Users/vic/_Work/VXUtilities/vxclick/src-tauri/target/release/bundle/macos/VXClick.app: valid on disk\n/Users/vic/_Work/VXUtilities/vxclick/src-tauri/target/release/bundle/macos/VXClick.app: satisfies its Designated Requirement\n"
+        },
+        {
+          "command": [
+            "shasum",
+            "-a",
+            "256",
+            "/Users/vic/_Work/VXUtilities/vxclick/src-tauri/target/release/bundle/macos/VXClick.app/Contents/MacOS/vxclick"
+          ],
+          "exit_code": 0,
+          "stdout": "ba3d1e4b781b265a5e7b6525de4c0759cb27ebd8c667f700bb6be13b78cffee6  /Users/vic/_Work/VXUtilities/vxclick/src-tauri/target/release/bundle/macos/VXClick.app/Contents/MacOS/vxclick\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "node",
+            "vxclick/scripts/verify_macos_identity.mjs",
+            "/Users/vic/_Work/VXUtilities/vxclick/src-tauri/target/release/bundle/macos/VXClick.app"
+          ],
+          "exit_code": 1,
+          "stdout": "",
+          "stderr": "node:internal/modules/run_main:107\n    triggerUncaughtException(\n    ^\n\nAssertionError [ERR_ASSERTION]: Sai bundle identity\n    at assertMacosRequirement (file:///Users/vic/_Work/VXUtilities/vxclick/scripts/verify_macos_identity.mjs:10:10)\n    at verifyMacosIdentity (file:///Users/vic/_Work/VXUtilities/vxclick/scripts/verify_macos_identity.mjs:21:7)\n    at file:///Users/vic/_Work/VXUtilities/vxclick/scripts/verify_macos_identity.mjs:28:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: '# designated => cdhash H\"7e09b8df2382bd4e87ea7b5184f5d765e445e84e\"',\n  expected: /identifier \"com\\.vxclick\\.desktop\"/,\n  operator: 'match',\n  diff: 'simple'\n}\n\nNode.js v26.5.0\n"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/vxclick_public_105_identity/VXClick.app",
+      "source_url": "https://github.com/linhbv94/VXClick/releases/download/v1.0.5/vxclick_1.0.5_macos_silicon.app.tar.gz",
+      "archive_sha256": "4b0cbaa658f7579e629331df8c5a1889c5f5867c4799d0de894adc0be0e27848",
+      "checks": [
+        {
+          "command": [
+            "codesign",
+            "-dvv",
+            "-r-",
+            "/tmp/vxclick_public_105_identity/VXClick.app"
+          ],
+          "exit_code": 0,
+          "stdout": "designated => identifier \"com.vxclick.desktop\" and certificate leaf = H\"fe024021592c718a39ad70b76d2edc5da0cd6b70\"\n",
+          "stderr": "Executable=/private/tmp/vxclick_public_105_identity/VXClick.app/Contents/MacOS/vxclick\nIdentifier=com.vxclick.desktop\nFormat=app bundle with Mach-O thin (arm64)\nCodeDirectory v=20500 size=29172 flags=0x10000(runtime) hashes=905+3 location=embedded\nSignature size=2027\nAuthority=(unavailable)\nInfo.plist=not bound\nTeamIdentifier=not set\nRuntime Version=27.0.0\nSealed Resources version=2 rules=13 files=1\n"
+        },
+        {
+          "command": [
+            "codesign",
+            "--verify",
+            "--deep",
+            "--strict",
+            "--verbose=2",
+            "/tmp/vxclick_public_105_identity/VXClick.app"
+          ],
+          "exit_code": 1,
+          "stdout": "",
+          "stderr": "/tmp/vxclick_public_105_identity/VXClick.app: CSSMERR_TP_NOT_TRUSTED\nIn architecture: arm64\n"
+        },
+        {
+          "command": [
+            "shasum",
+            "-a",
+            "256",
+            "/tmp/vxclick_public_105_identity/VXClick.app/Contents/MacOS/vxclick"
+          ],
+          "exit_code": 0,
+          "stdout": "b878ed982049eacdbe5a5217a892706db9ca7f5842b5b34af329df30caf5aa66  /tmp/vxclick_public_105_identity/VXClick.app/Contents/MacOS/vxclick\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "node",
+            "vxclick/scripts/verify_macos_identity.mjs",
+            "/tmp/vxclick_public_105_identity/VXClick.app"
+          ],
+          "exit_code": 1,
+          "stdout": "",
+          "stderr": "file:///Users/vic/_Work/VXUtilities/vxclick/scripts/verify_macos_identity.mjs:18\n    if (result.status !== 0) throw new Error(result.stderr || 'codesign failed');\n                                   ^\n\nError: /tmp/vxclick_public_105_identity/VXClick.app: CSSMERR_TP_NOT_TRUSTED\nIn architecture: arm64\n\n    at verifyMacosIdentity (file:///Users/vic/_Work/VXUtilities/vxclick/scripts/verify_macos_identity.mjs:18:36)\n    at file:///Users/vic/_Work/VXUtilities/vxclick/scripts/verify_macos_identity.mjs:28:3\n    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)\n    at async node:internal/modules/esm/loader:650:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\n\nNode.js v26.5.0\n"
+        }
+      ]
+    }
+  ],
+  "public_archive_matches_existing_release_evidence": true
+}

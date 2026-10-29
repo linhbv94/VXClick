@@ -3,6 +3,7 @@ import {spawnSync,execFileSync} from 'node:child_process';
 import {readdirSync,existsSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {verifyMacosIdentity} from './verify_macos_identity.mjs';
 const repo=fileURLToPath(new URL('..',import.meta.url));
 const frontend=resolve(repo,".");
 const native=resolve(repo,"src-tauri");
@@ -23,4 +24,8 @@ if(process.platform==='darwin' && process.argv[2]==='build') {
  const directory=env.CARGO_TARGET_DIR?resolve(frontend,env.CARGO_TARGET_DIR):join(native,'target');
  const binary=join(directory,...(target?[target]:[]),process.argv.includes('--debug')?'debug':'release',"vxclick");
  execFileSync(process.execPath,[gate,'--artifact',binary],{env,stdio:'inherit'});
+ // Fail before tauri-action uploads archives; --no-bundle is compiler-only QA.
+ if(!process.argv.includes('--no-bundle')) {
+  verifyMacosIdentity(join(directory,...(target?[target]:[]),process.argv.includes('--debug')?'debug':'release','bundle/macos/VXClick.app'));
+ }
 }

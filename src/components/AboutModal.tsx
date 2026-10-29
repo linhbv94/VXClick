@@ -90,12 +90,12 @@ export const AboutModal: React.FC<AboutModalProps> = ({ language, onBack, onClos
         <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
           <span className="text-slate-400">{t('source_label', language)}</span>
           <a
-            href="https://github.com/linhbv94/ztools"
+            href="https://github.com/linhbv94/VXClick"
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1 font-mono text-[10px] text-cyan-600 dark:text-cyan-400 hover:underline"
           >
-            <span>linhbv94/ztools</span>
+            <span>linhbv94/VXClick</span>
             <ExternalLink className="w-2.5 h-2.5" />
           </a>
         </div>

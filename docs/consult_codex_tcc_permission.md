@@ -18,7 +18,7 @@ Chỉ tham vấn/review chỉ đọc; không sửa nguồn; không gọi agent k
 
 ## 3. Câu hỏi tham vấn Codex
 1. Giải thích ngắn gọn cơ chế vì sao ad-hoc signing (`codesign -s -`) bị TCC từ chối nhận diện sau mỗi lần rebuild (mối liên hệ giữa cdhash, Designated Requirement và TCC database).
-2. Đối với VXClick, nên tái sử dụng certificate `FE024021592C718A39AD70B76D2EDC5DA0CD6B70` hay nên tạo một certificate riêng (ví dụ `VXClick Code Signing` hoặc `zTools Local Code Signing`)? Ưu/nhược điểm?
+2. Đối với VXClick, nên tái sử dụng certificate `FE024021592C718A39AD70B76D2EDC5DA0CD6B70` hay nên tạo một certificate riêng (ví dụ `VXClick Code Signing` hoặc `VXUtilities Local Code Signing`)? Ưu/nhược điểm?
 3. Nếu tạo certificate riêng hoặc dùng cert hiện có: Cần lệnh openssl/security cụ thể nào để tạo keychain/identity an toàn, không đụng chạm SSL/TLS root cert?
 4. Cấu hình lệnh `codesign` hoặc script build Tauri như thế nào để đảm bảo Designated Requirement sinh ra ràng buộc chặt chẽ vào `certificate leaf = H"..."` thay vì `cdhash`?
 5. Các bước tối thiểu người dùng cần làm 1 lần duy nhất trong System Settings để TCC lưu vĩnh viễn quyền Accessibility cho VXClick?

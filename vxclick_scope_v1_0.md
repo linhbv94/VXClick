@@ -62,7 +62,7 @@ Nút bấm biểu tượng bánh răng hoặc sliders `⚙ Setting ▾`. Khi nh�
 | **Repeat Count** | Stepper / Number Input | Số nguyên `1` → `9999` (mặc định: `1`) | Số lần lặp lại chuỗi macro (chỉ hoạt động khi `Continuous Playback = false`). |
 | *--- Đường kẻ phân cách ---* | Divider | - | Phân tách khu vực điều khiển và thông tin hỗ trợ. |
 | **About** | Menu Item (Click) | Mở popover thông tin | Hiển thị phiên bản, công nghệ Rust + Tauri, tác giả Bùi Việt Linh và liên kết mã nguồn. |
-| **Ủng hộ tác giả** | Menu Item (Click, icon Coffee) | Mở popover VietQR | Lời cảm ơn và mã QR VietQR (Vietcombank) chuẩn zTools để người dùng quét ủng hộ. |
+| **Ủng hộ tác giả** | Menu Item (Click, icon Coffee) | Mở popover VietQR | Lời cảm ơn và mã QR VietQR (Vietcombank) chuẩn VXUtilities để người dùng quét ủng hộ. |
 
 ---
 
@@ -109,8 +109,8 @@ Nút bấm biểu tượng bánh răng hoặc sliders `⚙ Setting ▾`. Khi nh�
 | **F11** | Settings | Tùy chỉnh lặp vô tận (Continuous Playback toggle) | **P0** |
 | **F12** | Settings | Tùy chỉnh số lần lặp cụ thể (Repeat Count stepper) | **P0** |
 | **F13** | Permissions | Tự động phát hiện và hướng dẫn cấp quyền Accessibility / Input Monitoring trên macOS | **P0** |
-| **F14** | Settings | Popover Giới thiệu (About) chuẩn zTools | **P0** |
-| **F15** | Settings | Popover Ủng hộ tác giả với mã VietQR chuẩn zTools | **P0** |
+| **F14** | Settings | Popover Giới thiệu (About) chuẩn VXUtilities | **P0** |
+| **F15** | Settings | Popover Ủng hộ tác giả với mã VietQR chuẩn VXUtilities | **P0** |
 | **F16** | Multi-Monitor | Chuẩn hóa tọa độ hiển thị trên màn hình Retina / 4K và thiết lập đa màn hình | **P1** |
 | **F17** | Storage | Lưu và mở tệp kịch bản `.vxclick` (Lưu chuỗi macro vào đĩa để tái sử dụng) | **P1** |
 | **F18** | Engine Failsafe | Corner Failsafe (Di chuột giật mạnh vào 1 trong 4 góc màn hình để dừng) | **P1** |

@@ -40,8 +40,9 @@ export interface MacroTimeline {
   events: MacroEvent[];
 }
 
-export type ThemeMode = 'system' | 'dark' | 'light';
+export type ThemeMode = 'system' | 'dark' | 'light' | 'oled';
 export type LanguageMode = 'vi' | 'en';
+export type SettingsTabId = 'general' | 'automation' | 'updates' | 'about' | 'support';
 
 export interface SettingsState {
   play_speed: number;

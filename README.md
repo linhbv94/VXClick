@@ -19,7 +19,7 @@ Windows: ┌──────────────────────�
 **VXClick** là ứng dụng desktop cá nhân siêu nhẹ dành cho macOS và Windows, chuyên phục vụ tác vụ ghi lại và tự động phát lại các thao tác chuột và bàn phím (Macro Recorder & Automation Player).
 
 ### Điểm nhấn Khác biệt
-- **Bố cục 1 hàng chuẩn zTools (`Single-Row Window Bar` 310px × 38px):** Tích hợp hoàn hảo các nút điều khiển cửa sổ native và các nút hành động macro.
+- **Bố cục 1 hàng chuẩn VXUtilities (`Single-Row Window Bar` 310px × 38px):** Tích hợp hoàn hảo các nút điều khiển cửa sổ native và các nút hành động macro.
   - *macOS:* Giữ cụm 3 nút Traffic Lights native ở góc trái (`pl-3`), nút Xanh (Zoom) vô hiệu hóa vì thanh widget cố định kích thước.
   - *Windows:* Tắt hoàn toàn titlebar native (`decorations: false`, không double bar), mép trái có Drag handle `:::`, mép phải có nút Thu nhỏ `─` và Đóng `✕`.
 - **Nút Pin (Always on Top) 1-Chạm:** Đưa trực tiếp ra ngoài thanh chính cạnh Setting để ghim/bỏ ghim tức thì.
@@ -27,8 +27,8 @@ Windows: ┌──────────────────────�
   1. `Play Speed`: Tốc độ phát lại (`0.5x`, `1.0x`, `2.0x`, `5.0x`, `10.0x`, `Custom...`).
   2. `Continuous Playback`: Công tắc lặp vô tận (Boolean switch).
   3. `Repeat Count`: Ô nhập số lần lặp cụ thể (tự động khóa mờ khi bật lặp vô tận).
-  4. `About`: Giới thiệu phần mềm, tác giả Bùi Việt Linh và hệ sinh thái zTools.
-  5. `Ủng hộ tác giả`: Card mã QR VietQR (Vietcombank) nền trắng sắc nét đặt ở vị trí trung tâm chuẩn zTools.
+  4. `About`: Giới thiệu phần mềm, tác giả Bùi Việt Linh và hệ sinh thái VXUtilities.
+  5. `Ủng hộ tác giả`: Card mã QR VietQR (Vietcombank) nền trắng sắc nét đặt ở vị trí trung tâm chuẩn VXUtilities.
 - **Engine Tầng Sâu Siêu Nhẹ (Rust Native):** Hoạt động trực tiếp ở tầng OS API, độ chính xác cấp micro-giây, chống kẹt phím toàn diện bằng `ActiveInputLedger` và có mạch ngắt khẩn cấp bằng phím cứng `ESC`.
 
 ---
@@ -73,3 +73,8 @@ Như nhận định trong đề bài, giao diện của VXClick siêu đơn gi�
 ### 5. Thuật toán Nén Thích ứng Bảo Toàn Thao Tác Vẽ & Kéo Thả (Drag Fidelity)
 - **Vấn đề:** Chuột gaming 1000Hz phát sinh hàng vạn sự kiện. Nhưng nếu nén thô bạo hoặc nhảy cóc (instant warp ở 10x), các thao tác vẽ nét, kéo thả tệp (Drag & Drop) hoặc bôi đen văn bản sẽ bị đứt gãy.
 - **Giải pháp:** Tự động nhận diện trạng thái **Drag Mode** (khi có nút chuột đang Down): giữ lại 100% tọa độ tại MouseDown, MouseUp và duy trì tần số lấy mẫu cao (60Hz - 120Hz), tuyệt đối không nhảy cóc khi đang kéo thả. Áp dụng bộ lọc Tự Loại Trừ (Self-exclusion) để không ghi nhận các cú click vào chính thanh công cụ VXClick.
+
+
+### Local signing recovery (2026-10-29)
+
+Nếu codesign hỏi mật khẩu keychain cũ do duplicate identity, không yêu cầu user đoán mật khẩu. Dùng session ký tạm cùng certificate/key hiện có theo [runbook workspace](../_summary/standard_docs/desktop_system_permissions.md). Giữ nguyên fingerprint/bundle ID, chạy build_signed_macos app-only và strict/DR gate. Session tạm phải cleanup, không đổi trust/TCC, không cần release.

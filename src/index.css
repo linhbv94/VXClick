@@ -46,6 +46,13 @@
   color: #f8fafc;
 }
 
+.theme-oled .widget_shell {
+  background: rgba(0, 0, 0, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.85), 0 4px 12px rgba(0, 0, 0, 0.6);
+  color: #f8fafc;
+}
+
 .widget_bar {
   height: 38px;
   min-height: 38px;
@@ -93,3 +100,14 @@
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
+/* Click is a compact widget: Settings shares its 360px shell, not a desktop modal. */
+.widget_content:has([data-vx-settings-modal]) {overflow:hidden;max-height:none;}
+[data-vx-settings-modal] {max-height:var(--widget-content-max-h,480px);min-height:0;}
+[data-vx-settings-modal]>div:first-child,
+[data-vx-settings-modal]>[role="tablist"],
+[data-vx-settings-modal]>div:last-child {flex-shrink:0;}
+[data-vx-settings-modal]>[role="tablist"] {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;gap:2px;}
+[data-vx-settings-modal]>[role="tablist"]>button {padding:5px 2px;white-space:normal;line-height:13px;font-size:10px;text-align:center;min-width:0;}
+[data-vx-settings-modal]>[role="tablist"]>div {display:none;}
+[data-vx-settings-modal]>div:nth-child(n+3):not(:last-child) {min-height:0;overflow-y:auto;flex:0 1 auto;}

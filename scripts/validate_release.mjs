@@ -24,8 +24,8 @@ assert.equal(appPackage?.match(/^version\s*=\s*"([^"]+)"/m)?.[1], pkg.version, '
 const publicKey = Buffer.from(config.plugins?.updater?.pubkey ?? '', 'base64').toString('utf8').trim().split('\n').at(-1);
 assert.equal(Buffer.from(publicKey ?? '', 'base64').length, 42, 'Invalid updater public key');
 assert.equal(config.bundle?.createUpdaterArtifacts, true);
-// Free-distribution profile for macOS and Windows
-assert.equal(config.bundle.macOS?.signingIdentity, '-');
+// Same certificate as the existing CI signer; never silently fall back to ad-hoc.
+assert.equal(config.bundle.macOS?.signingIdentity, 'FE024021592C718A39AD70B76D2EDC5DA0CD6B70', 'macOS must preserve the existing certificate identity');
 assert.equal(config.bundle.windows?.nsis?.installMode, 'currentUser');
 assert.equal(config.plugins.updater.windows?.installMode, 'passive');
 if (process.env.GITHUB_REPOSITORY) {

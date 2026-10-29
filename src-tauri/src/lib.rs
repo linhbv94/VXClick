@@ -16,6 +16,17 @@ pub struct AppState {
 }
 
 #[tauri::command]
+fn prepare_app_update(window: tauri::WebviewWindow, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    if window.label() != "main" { return Err("scope_mismatch".into()); }
+    state.engine.prepare_app_update()
+}
+#[tauri::command]
+fn cancel_app_update(window: tauri::WebviewWindow, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    if window.label() != "main" { return Err("scope_mismatch".into()); }
+    state.engine.cancel_app_update(); Ok(())
+}
+
+#[tauri::command]
 fn start_recording(state: tauri::State<'_, AppState>) -> Result<u64, String> {
     state.engine.start_recording()
 }
@@ -57,8 +68,18 @@ fn get_settings(state: tauri::State<'_, AppState>) -> Result<SettingsState, Stri
 }
 
 #[tauri::command]
-fn set_settings(settings: SettingsState, state: tauri::State<'_, AppState>) -> Result<(), String> {
-    state.engine.set_settings(settings)
+fn set_settings(
+    app: tauri::AppHandle,
+    settings: SettingsState,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let lang = settings.language.clone();
+    state.engine.set_settings(settings)?;
+    #[cfg(target_os = "macos")]
+    rebuild_mac_app_menu(&app, &lang);
+    #[cfg(not(target_os = "macos"))]
+    let _ = app;
+    Ok(())
 }
 
 #[tauri::command]
@@ -199,6 +220,75 @@ fn sync_mac_traffic_lights(window: &tauri::WebviewWindow) {
     });
 }
 
+#[cfg(target_os = "macos")]
+fn rebuild_mac_app_menu(app: &tauri::AppHandle, lang: &str) {
+    use tauri::menu::{AboutMetadataBuilder, Menu, MenuItem, PredefinedMenuItem, Submenu};
+
+    let is_en = lang.eq_ignore_ascii_case("en");
+    let about_credits = if is_en {
+        "Bùi Việt Linh\nHigh-speed mouse and keyboard macro automation utility for macOS.\nGitHub: https://github.com/linhbv94/VXClick"
+    } else {
+        "Bùi Việt Linh\nTiện ích ghi và phát lại thao tác chuột và bàn phím tốc độ cao.\nGitHub: https://github.com/linhbv94/VXClick"
+    };
+    let settings_label = if is_en { "Settings…" } else { "Cài đặt…" };
+
+    let mut about_builder = AboutMetadataBuilder::new()
+        .name(Some("VXClick"))
+        .version(Some(env!("CARGO_PKG_VERSION")))
+        // Empty AppKit build version prevents fallback to CFBundleVersion.
+        .short_version(Some(""))
+        .copyright(Some("© 2026 Bùi Việt Linh. All rights reserved.".to_string()))
+            .authors(Some(vec!["Bùi Việt Linh".to_string()]))
+        .credits(Some(about_credits))
+        .website(Some("https://github.com/linhbv94/VXClick"))
+        .website_label(Some("GitHub"));
+    about_builder = about_builder.icon(Some(tauri::include_image!("icons/icon.png")));
+
+    let build_menu = || -> tauri::Result<Menu<tauri::Wry>> {
+        let about_item = PredefinedMenuItem::about(app, None, Some(about_builder.build()))?;
+        let sep1 = PredefinedMenuItem::separator(app)?;
+        let settings_item = MenuItem::with_id(
+            app,
+            "app_settings",
+            settings_label,
+            true,
+            Some("CmdOrCtrl+,"),
+        )?;
+        let sep2 = PredefinedMenuItem::separator(app)?;
+        let services_item = PredefinedMenuItem::services(app, None)?;
+        let sep3 = PredefinedMenuItem::separator(app)?;
+        let hide_item = PredefinedMenuItem::hide(app, None)?;
+        let hide_others_item = PredefinedMenuItem::hide_others(app, None)?;
+        let show_all_item = PredefinedMenuItem::show_all(app, None)?;
+        let sep4 = PredefinedMenuItem::separator(app)?;
+        let quit_item = PredefinedMenuItem::quit(app, None)?;
+
+        let app_submenu = Submenu::with_items(
+            app,
+            "VXClick",
+            true,
+            &[
+                &about_item,
+                &sep1,
+                &settings_item,
+                &sep2,
+                &services_item,
+                &sep3,
+                &hide_item,
+                &hide_others_item,
+                &show_all_item,
+                &sep4,
+                &quit_item,
+            ],
+        )?;
+        Menu::with_items(app, &[&app_submenu])
+    };
+
+    if let Ok(menu) = build_menu() {
+        let _ = app.set_menu(menu);
+    }
+}
+
 pub fn run() {
     let engine = MacroEngine::new();
     let engine_setup = engine.clone();
@@ -210,8 +300,21 @@ pub fn run() {
         .manage(AppState {
             engine: engine.clone(),
         })
+        .on_menu_event(|app, event| {
+            if event.id() == "app_settings" {
+                use tauri::{Emitter, Manager};
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.show();
+                    let _ = win.unminimize();
+                    let _ = win.set_focus();
+                }
+                let _ = app.emit("vxclick://open-settings", ());
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             get_system_state,
+            prepare_app_update,
+            cancel_app_update,
             start_recording,
             stop_recording,
             start_playback,
@@ -232,6 +335,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 use tauri::Manager;
+                let initial_lang = engine_setup.get_settings().language;
+                rebuild_mac_app_menu(app.handle(), &initial_lang);
                 if let Some(win) = app.get_webview_window("main") {
                     sync_mac_space_behavior(&win);
                     sync_mac_traffic_lights(&win);

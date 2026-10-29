@@ -1,12 +1,12 @@
 {
   "name": "vxclick",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "VXClick — Ultra-compact Macro Recorder & Automation Engine",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node scripts/check_settings_ui.mjs && tsc && vite build",
     "bundle:mac": "node scripts/build_signed_macos.mjs",
     "preview": "vite preview",
     "tauri": "node scripts/tauri_sdk.mjs",

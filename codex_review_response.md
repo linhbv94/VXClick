@@ -4,11 +4,11 @@ Ba lỗi có nguyên nhân rõ trong frontend hiện tại: **chiều cao native
 
 Các điểm gây lỗi:
 
-- [App.tsx:107](/Users/vic/_Work/zTools/vxclick/src/App.tsx:107) đặt Settings cố định **350px cho toàn cửa sổ**, bao gồm MainBar 38px. Tauri không tự tăng kích thước cửa sổ theo nội dung DOM.
-- [App.tsx:261](/Users/vic/_Work/zTools/vxclick/src/App.tsx:261) cộng `mt-1.5`; [SettingsPopover.tsx:69](/Users/vic/_Work/zTools/vxclick/src/components/SettingsPopover.tsx:69) lại cộng `mt-1.5`. Hai margin cộng thành 12px, chưa kể padding, border, gap và các hàng nội dung.
+- [App.tsx:107](/Users/vic/_Work/VXUtilities/vxclick/src/App.tsx:107) đặt Settings cố định **350px cho toàn cửa sổ**, bao gồm MainBar 38px. Tauri không tự tăng kích thước cửa sổ theo nội dung DOM.
+- [App.tsx:261](/Users/vic/_Work/VXUtilities/vxclick/src/App.tsx:261) cộng `mt-1.5`; [SettingsPopover.tsx:69](/Users/vic/_Work/VXUtilities/vxclick/src/components/SettingsPopover.tsx:69) lại cộng `mt-1.5`. Hai margin cộng thành 12px, chưa kể padding, border, gap và các hàng nội dung.
 - Khi bật “Tự nhập”, panel thêm một hàng input nhưng effect resize chỉ phụ thuộc `activeView`, nên chiều cao không cập nhật.
-- [index.css:12](/Users/vic/_Work/zTools/vxclick/src/index.css:12) chỉ đặt `overflow-x: hidden`. Khi một trục dùng `hidden`, trục còn lại mặc định `visible` được tính thành `auto`; nội dung vượt viewport có thể sinh scroll dọc. Settings không có vùng scroll riêng: nguồn này cho thấy scroll phát sinh ở document.
-- [tauri_bridge.ts:357](/Users/vic/_Work/zTools/vxclick/src/services/tauri_bridge.ts:357) bắt lỗi resize rồi trả `'down'` như thành công. `App` vẫn ghi nhận chiều cao yêu cầu dù resize có thể thất bại.
+- [index.css:12](/Users/vic/_Work/VXUtilities/vxclick/src/index.css:12) chỉ đặt `overflow-x: hidden`. Khi một trục dùng `hidden`, trục còn lại mặc định `visible` được tính thành `auto`; nội dung vượt viewport có thể sinh scroll dọc. Settings không có vùng scroll riêng: nguồn này cho thấy scroll phát sinh ở document.
+- [tauri_bridge.ts:357](/Users/vic/_Work/VXUtilities/vxclick/src/services/tauri_bridge.ts:357) bắt lỗi resize rồi trả `'down'` như thành công. `App` vẫn ghi nhận chiều cao yêu cầu dù resize có thể thất bại.
 
 **`resizable: false` không phải nguyên nhân.** Tôi kiểm tra implementation macOS của Tao đang cài: `set_inner_size()` gọi cập nhật content size mà không kiểm tra cờ resizable. Giữ `false` để user không kéo đổi kích thước bằng mép cửa sổ.
 
@@ -125,7 +125,7 @@ await app_window.setPosition(
 
 **2. GripVertical không kéo được**
 
-[MainBar.tsx:33](/Users/vic/_Work/zTools/vxclick/src/components/MainBar.tsx:33) và tay nắm chỉ dùng:
+[MainBar.tsx:33](/Users/vic/_Work/VXUtilities/vxclick/src/components/MainBar.tsx:33) và tay nắm chỉ dùng:
 
 ```tsx
 style={{ WebkitAppRegion: 'drag' }}

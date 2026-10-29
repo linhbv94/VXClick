@@ -3,8 +3,8 @@
 > **Sản phẩm:** VXClick — Tiện ích Tự động hóa Macro Chuột & Bàn phím Siêu Tối giản  
 > **Thư mục tài liệu:** `vxclick/docs/spec/`  
 > **Phiên bản:** 1.1.0  
-> **Ngày cập nhật:** 2026-10-15  
-> **Quy chuẩn tuân thủ:** Bắt buộc tuân thủ 100% [desktop_ui_standards.md](../../../.agents/desktop_ui_standards.md) và [master_theme.md](../../../_summary/master_theme.md).  
+> **Ngày cập nhật:** 2026-10-29  
+> **Quy chuẩn tuân thủ:** Bắt buộc tuân thủ 100% [desktop_ui_standards.md](../../../_summary/standard_docs/desktop_ui_standards.md) và [master_theme.md](../../../_summary/standard_docs/master_theme.md).  
 
 ---
 
@@ -12,7 +12,7 @@
 
 VXClick không sử dụng cửa sổ truyền thống với các menu File, Edit, View cồng kềnh. Giao diện của ứng dụng được thu gọn tối đa thành một **thanh công cụ nổi (Floating Pill Bar)** thanh lịch, neo gọn gàng trên màn hình desktop:
 
-* **Kích thước Cố định Thanh Widget (Main Bar):** Rộng `360px`, Cao `38px` (gồm thanh điều khiển 32px chuẩn theo [desktop_ui_standards.md](../../../.agents/desktop_ui_standards.md) cộng 3px padding trên/dưới bảo vệ đổ bóng viền).
+* **Kích thước Cố định Thanh Widget (Main Bar):** Rộng `360px`, Cao `38px` (gồm thanh điều khiển 32px chuẩn theo [desktop_ui_standards.md](../../../_summary/standard_docs/desktop_ui_standards.md) cộng 3px padding trên/dưới bảo vệ đổ bóng viền).
 * **Bán kính bo góc (Border Radius):** `12px` (chuẩn `rounded-xl`), viền mảnh `1px` sắc nét.
 * **Kéo thả cửa sổ (Window Dragging):** Bất kỳ vùng đệm trống nào giữa các nút hoặc hai đầu thanh công cụ đều được gắn thuộc tính `data-tauri-drag-region`, cho phép người dùng nhấp giữ chuột để di chuyển cửa sổ đến bất kỳ vị trí thuận tiện nào trên màn hình.
 * **Kiến trúc Cửa sổ Đa tầng (Multi-Window & Dynamic Expansion):**
@@ -46,7 +46,7 @@ Góc trái hiển thị cụm **3 nút Traffic Lights native** trong vùng đệ
 ```
 
 ### 2.2. Bố cục trên Windows 11/10 (x64)
-Theo quy chuẩn [desktop_ui_standards.md](../../../.agents/desktop_ui_standards.md), Windows tắt hoàn toàn titlebar native (`decorations: false`, không double bar). Góc trái có tay nắm kéo `:::`, góc phải có nút Thu nhỏ `─` và Đóng `✕`:
+Theo quy chuẩn [desktop_ui_standards.md](../../../_summary/standard_docs/desktop_ui_standards.md), Windows tắt hoàn toàn titlebar native (`decorations: false`, không double bar). Góc trái có tay nắm kéo `:::`, góc phải có nút Thu nhỏ `─` và Đóng `✕`:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -238,7 +238,7 @@ Khi người dùng nhấn vào nút **⚙ Setting ▾**, một bảng Popover hi
 
 ---
 
-## 8. Modal Thông tin & Hỗ trợ (Tuân thủ Quy chuẩn Desktop UI zTools)
+## 8. Modal Thông tin & Hỗ trợ (Tuân thủ Quy chuẩn Desktop UI VXUtilities)
 
 ### 8.1. Modal Giới thiệu (About Dialog)
 Kích thước: `380px × 340px`, căn giữa màn hình:
@@ -256,7 +256,7 @@ Kích thước: `380px × 340px`, căn giữa màn hình:
 │   xây dựng trên nền tảng Tauri v2 và Rust Native.     │
 │                                                        │
 │   • Tác giả: Bùi Việt Linh                             │
-│   • Bản quyền: zTools Ecosystem 2026                   │
+│   • Bản quyền: VXUtilities Ecosystem 2026             │
 │   • Công nghệ: Rust 2024, React 19, TypeScript, Vite   │
 │   • Phím tắt: ⌥⇧⌘R (Rec) | ⌥⇧⌘P (Play) | ESC (Stop)    │
 │   • Mã nguồn: github.com/linhbv94/ztools               │
@@ -268,8 +268,8 @@ Kích thước: `380px × 340px`, căn giữa màn hình:
 
 ---
 
-### 8.2. Modal Ủng hộ Tác giả (Support Author Dialog — Chuẩn zTools 1.3.0)
-Theo quy định tại mục 25-32 của [desktop_ui_standards.md](../../../.agents/desktop_ui_standards.md):
+### 8.2. Modal Ủng hộ Tác giả (Support Author Dialog — Chuẩn VXUtilities 1.3.0)
+Theo quy định tại mục 25-32 của [desktop_ui_standards.md](../../../_summary/standard_docs/desktop_ui_standards.md):
 - **Tối giản:** Loại bỏ hoàn toàn số tài khoản thủ công, tên ngân hàng bằng chữ và nút copy STK rườm rà.
 - **Tập trung:** Đặt **card mã QR VietQR (Vietcombank) nền trắng sắc nét ở vị trí trung tâm**, tối ưu để người dùng quét trực tiếp từ app ngân hàng trên điện thoại di động.
 - **Tông màu:** Tông màu ấm cúng (Amber/Warm Yellow), tạo cảm giác thân thiện, chân thành.
@@ -303,7 +303,7 @@ Theo quy định tại mục 25-32 của [desktop_ui_standards.md](../../../.age
 
 ## 9. Bảng Token Thiết kế (Design Tokens & Color Palette)
 
-Tuân thủ nghiêm ngặt bảng mã màu Dark/Light Mode của [master_theme.md](../../../_summary/master_theme.md):
+Tuân thủ nghiêm ngặt bảng mã màu Dark/Light Mode của [master_theme.md](../../../_summary/standard_docs/master_theme.md):
 
 | Thành phần UI | Mã Màu Dark | Mã Màu Light | Lớp Tailwind CSS Tương đương | Ghi chú Trải nghiệm |
 | :--- | :--- | :--- | :--- | :--- |
@@ -357,7 +357,7 @@ Khi hệ thống phát hiện có phiên bản cập nhật mới (`updateState.
 - Khi người dùng bấm mở Setting, popover mở rộng xuống dưới và hiển thị ngay thông tin bản mới cùng nút cài đặt 1 chạm.
 
 ### 10.2. Khối Cập nhật Ứng dụng trong Bảng Cài đặt Mở rộng (`SettingsPopover.tsx`)
-Nằm ở vị trí Mục 7 ngay trước cụm About/Support, thiết kế bo góc `rounded-lg` đồng nhất theo chuẩn zTools:
+Nằm ở vị trí Mục 7 ngay trước cụm About/Support, thiết kế bo góc `rounded-lg` đồng nhất theo chuẩn VXUtilities:
 - **Tiêu đề khối:** Icon `RefreshCw` + chữ "Cập nhật phần mềm" + badge phiên bản hiện tại `v1.0.1`.
 - **Máy trạng thái hữu hạn (FSM Lifecycle):**
   1. `idle`: Hiển thị "Tự động kiểm tra bản mới khi mở ứng dụng" kèm nút "Kiểm tra cập nhật".
@@ -376,3 +376,60 @@ Nằm ở vị trí Mục 7 ngay trước cụm About/Support, thiết kế bo g
 - **Tính toán ngân sách chiều cao khả dụng:** `bridgeSyncWindowHeight` và `bridgeInitWindowConstraints` truy vấn `monitor.workArea` (trừ đi chiều cao Taskbar/Dock và 38px của thanh chính), cập nhật `--widget-content-max-h` trên `document.documentElement` để nội dung cuộn mượt mà khi màn hình hiển thị nhỏ mà không gây kẹt kích thước.
 - **Tuần tự hóa (Serialization):** Toàn bộ thao tác `win.setSize` và `win.setPosition` được đưa vào hàng đợi tuần tự Promise, loại bỏ triệt để hiện tượng race condition khi người dùng thao tác đóng/mở nhanh.
 
+---
+
+## 11. Chuẩn hóa Suite UI 2026-10-29 (Titlebar Profile `compact_widget_38`, Menu macOS, Settings 5 Tabs, Song ngữ & Auto-Update)
+
+1. **Titlebar Profile (`compact_widget_38`):**
+   - Giữ profile riêng `compact_widget_38` (`360 × 38px`) theo [titlebar_standards.md](../../../_summary/standard_docs/titlebar_standards.md); không ép về `standard_32`.
+   - Traffic lights native macOS căn tâm dọc `y = 20.0pt` (gồm border trên 1px + `38 / 2`), giữ nguyên reference `NSWindow.standardWindowButton:forStyleMask:` SDK 27.0 trên main thread (`run_on_main_thread`).
+   - Nút Settings cuối hàng có hitbox `28×28px`, icon `16×16px`, radius `6px`, `aria-label` đầy đủ.
+2. **Menu Ứng dụng Native macOS (`VXClick`):**
+   - Tuân thủ [macos_app_menu_standards.md](../../../_summary/standard_docs/macos_app_menu_standards.md): `About VXClick` → Separator → `Settings… / Cài đặt…` (`⌘,`) → Separator → `Services` → Separator → `Hide VXClick` / `Hide Others` / `Show All` → Separator → `Quit VXClick`.
+   - `AboutMetadataBuilder` truyền tác giả `Bùi Việt Linh`, mô tả ngắn theo ngôn ngữ hiện hành (`vi`/`en`) và repo `https://github.com/linhbv94/VXClick` vào `credits`. Tự động cập nhật nhãn menu custom khi đổi ngôn ngữ.
+3. **Cấu trúc Settings (`SettingsPopover.tsx`):**
+   - Tuân thủ [settings_standards.md](../../../_summary/standard_docs/settings_standards.md): thanh điều hướng gồm `General (Chung)` → `Automation (Tác vụ)` → Divider → `Updates (Cập nhật)` → `About (Giới thiệu)` → `Support (Ủng hộ)`.
+   - Tab `General` **chỉ gồm đúng 2 section**:
+     - `G1`: `Giao diện & Màu sắc / Theme & Colors` (4 radio cards 2 cột: `System` → `Dark` → `Light` → `Pure Black / Đen tuyền`).
+     - `G2`: `Ngôn ngữ hiển thị / Display Language` (2 radio ngang: `Tiếng Việt` và `English`).
+   - Toàn bộ cấu hình nghiệp vụ (`Play Speed`, `Continuous`, `Repeat Count`, `Auto Click`, `Always on Top`) đặt tại tab `Automation`.
+   - Footer có nút `Khôi phục mặc định / Reset Defaults` (giữ nguyên ngôn ngữ đang chọn) bên trái và `Đóng / Close` bên phải.
+4. **Auto-Update (`AU-01`…`AU-16`):**
+   - Dùng chung `useAppUpdater` controller (`src/services/app_updater.ts`) với `prepare_app_update` / `cancel_app_update` native.
+   - Khi có bản cập nhật mới ở chế độ thu gọn (`activeView === 'main'`), hiển thị card thông báo trực tiếp ngay trong `widget_shell` với nút CTA chính `Cập nhật & khởi động lại / Update & restart` gọi trực tiếp `installUpdate()`.
+
+
+
+## Đồng bộ UI suite — Codex tiếp quản ngày2026-10-29
+
+Theo [Settings](../../../_summary/standard_docs/settings_standards.md), [song ngữ](../../../_summary/standard_docs/bilingual_standards.md) và [updater](../../../_summary/standard_docs/auto_update_standards.md). Mục này cập nhật các mô tả cũ trái ranh giới General; không thay engine hoặc tự đánh dấu Specs ready/QA/release.
+
+| Tab / surface | Key / owner | Capability, apply và persist |
+|---|---|---|
+| Settings | Shell mở rộng | Main toolbar giữ compact_widget_38; Settings cùng shell360px, chỉ thay chiều cao theo nội dung/work area, không đổiX hoặc width khi mở/đóng |
+| Chung | `settings.theme`, `settings.language` | General đúng Theme→Language, giữ4mode thực;5tab General/Automation/Updates/About/Support |
+| Layout | Header nhỏ/tab ngang/footer gọn | General và Automation vừa width widget; body cuộn khi cần, giữ gear16/hitbox28 |
+
+Không dùng browser fake traffic lights làm native evidence. Chưa nghiệm thu resize work area/multi-monitor/Mission Control trong bundle thật.
+
+Bằng chứng/checks và giới hạn: [báo cáo Codex](../../../_summary/agents_handoff/suite_ui_codex_20261029_result.md). ST/BI/AU/TB native acceptance chỉ đạt khi có evidence phù hợp; source/build không tự đạt runtime.
+
+### QA native 2026-10-29 — đổi locale
+
+Đổi VI/EN trong Settings phải giữ nguyên màn đang xem và các listener/job. Callback kiểm quyền dùng language ref hiện hành; locale không chạy lại bước khởi tạo hay tự bật màn Accessibility.
+
+## Đính chính user — Settings compact 2026-10-29
+
+Không áp visual Settings của window app đầy đủ cho VXClick. Width shell360 (panel nội dung trừ border), padding12,5tab ngang, chiều cao tự theo nội dung và giới hạn work area; không sidebar hoặc modal668. General vẫn4theme thực+2language, giữ Automation/Updates/About/Support và keyboard/apply/persist/reset. Header/footer gọn giữ trong panel, body riêng cuộn khi dài. Không sửa engine hay updater từ thay đổi visual này.
+
+
+## Feedback20261029 — Settings component dùng chung
+
+- Căn cứ: [feedback user](../../../_summary/feedback.md) và [Settings contract](../../../_summary/standard_docs/settings_standards.md). Title VXabc Settings không icon; commonvisual/copy lấy VXMedia.
+- Source dùng lại: [canonical React](../../../_summary/standard_codes/settings_ui/settings_ui.tsx), vendorlocal `src/components/shared/settings_ui.tsx` + CSS + SHAmanifest (Clean ở desktop/src); không runtimeimport sibling.
+- Click giữ widget360/tabngang, Automation trước General, compactheader36/footer40; chỉ nởdọc, không sidebar192. General chỉ2sectionTheme→Language, chỉcapability thật. Updates/About/Support dùngcomponent; version/repo/description/icon/QR làmetadata riêng, tabnghiệpvụ vàconfig/updaterguards giữadapter hiệncó.
+- Nghiệmthu riêng: commoncopy/geometry vi-en, theme/localeapply+readback, radio/tabkeyboard/focustrap/Escape, body cuộn/footerkhôngche; native/Windows/packaged/E2E phải ghi evidence, build/hashPASSkhông tựđạt. About native thamchiếuSearch, khác AboutSettings.
+
+
+### About native — đính chính 2026-10-30
+Theo hợp đồng menu/About root: PNG trong suốt512×512 riêng app (không Dock squircle/default32), layout AppKit theo Search. Credits: Bùi Việt Linh → mô tả vi/en → GitHub URL; footer © 2026 Bùi Việt Linh. All rights reserved. Giữ version thật, không lặp build version. Cần QA bundle/native mới; không coi cargo check là visual PASS.

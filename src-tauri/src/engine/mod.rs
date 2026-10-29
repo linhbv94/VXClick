@@ -38,6 +38,7 @@ pub struct EngineState {
     pub playback_abort_pair: Arc<(Mutex<bool>, Condvar)>,
     pub playback_worker: Option<std::thread::JoinHandle<()>>,
     pub is_shutting_down: Arc<AtomicBool>,
+    update_prepared: bool,
     pub app_handle: Option<AppHandle>,
     pub settings_path: Option<PathBuf>,
 }
@@ -70,6 +71,7 @@ impl MacroEngine {
                 playback_abort_pair: Arc::new((Mutex::new(false), Condvar::new())),
                 playback_worker: None,
                 is_shutting_down: Arc::new(AtomicBool::new(false)),
+                update_prepared: false,
                 app_handle: None,
                 settings_path: None,
             })),
@@ -198,6 +200,18 @@ impl MacroEngine {
         }
     }
 
+    pub fn prepare_app_update(&self) -> Result<(), String> {
+        let mut state = self.inner.write().map_err(|e| e.to_string())?;
+        if matches!(state.current_state, SystemState::RECORDING | SystemState::PLAYING | SystemState::AUTOCLICKING) {
+            return Err("operation_busy: hãy dừng ghi/phát/auto click trước khi cập nhật".into());
+        }
+        state.update_prepared = true;
+        Ok(())
+    }
+    pub fn cancel_app_update(&self) {
+        self.inner.write().unwrap().update_prepared = false;
+    }
+
     pub fn get_state(&self) -> SystemState {
         self.inner.read().unwrap().current_state
     }
@@ -272,7 +286,7 @@ impl MacroEngine {
         }
         let mut state = self.inner.write().unwrap();
 
-        if state.is_shutting_down.load(Ordering::SeqCst) {
+        if state.update_prepared || state.is_shutting_down.load(Ordering::SeqCst) {
             return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
         }
 
@@ -442,7 +456,7 @@ impl MacroEngine {
         }
         let old_worker = {
             let mut state = self.inner.write().unwrap();
-            if state.is_shutting_down.load(Ordering::SeqCst) {
+            if state.update_prepared || state.is_shutting_down.load(Ordering::SeqCst) {
                 return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
             }
             if state.current_state != SystemState::IDLE_READY {
@@ -461,7 +475,7 @@ impl MacroEngine {
 
         let mut state = self.inner.write().unwrap();
 
-        if state.is_shutting_down.load(Ordering::SeqCst) {
+        if state.update_prepared || state.is_shutting_down.load(Ordering::SeqCst) {
             return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
         }
 
@@ -608,7 +622,7 @@ impl MacroEngine {
         }
         let old_worker = {
             let mut state = self.inner.write().unwrap();
-            if state.is_shutting_down.load(Ordering::SeqCst) {
+            if state.update_prepared || state.is_shutting_down.load(Ordering::SeqCst) {
                 return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
             }
             if !autoclick_start_allowed(state.current_state) {
@@ -627,7 +641,7 @@ impl MacroEngine {
         }
 
         let mut state = self.inner.write().unwrap();
-        if state.is_shutting_down.load(Ordering::SeqCst) {
+        if state.update_prepared || state.is_shutting_down.load(Ordering::SeqCst) {
             return Err("Ứng dụng đang trong tiến trình đóng.".to_string());
         }
 

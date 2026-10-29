@@ -8,7 +8,7 @@ import {
   MousePointer2,
   Pin,
   PinOff,
-  Settings2,
+  Settings,
   Minus,
   X,
   GripVertical,
@@ -68,6 +68,8 @@ export const MainBar: React.FC<MainBarProps> = ({
 
   return (
     <header
+      data-vx-titlebar-root
+      data-vx-titlebar-profile="compact_widget_38"
       className="widget_bar relative w-full h-[38px] px-2 flex items-center justify-between select-none overflow-hidden drag-region"
       style={dragStyle}
     >
@@ -97,7 +99,7 @@ export const MainBar: React.FC<MainBarProps> = ({
                 className="w-2.5 h-2.5 rounded-full bg-amber-500/80 hover:bg-amber-500 transition-colors shadow-xs"
               />
               <div
-                title="Cố định kích thước (Zoom disabled)"
+                title={t('zoom_disabled_title', language)}
                 className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-700/60 cursor-not-allowed"
               />
             </div>
@@ -251,16 +253,22 @@ export const MainBar: React.FC<MainBarProps> = ({
           )}
         </button>
 
-        {/* Nút 4: Setting Dropdown Trigger */}
+        {/* Nút 4: Setting Dropdown Trigger (Hitbox 28x28, icon 16x16) */}
         <button
           type="button"
+          data-vx-titlebar-settings
           onClick={onToggleSetting}
+          aria-label={
+            hasUpdateAvailable
+              ? t('settings_update_available_title', language)
+              : t('settings_title', language)
+          }
           title={
             hasUpdateAvailable
               ? t('settings_update_available_title', language)
               : t('settings_title', language)
           }
-          className={`relative p-1.5 rounded-lg text-xs transition-all active:scale-95 border ${
+          className={`relative w-7 h-7 flex items-center justify-center rounded-[6px] text-xs transition-all active:scale-95 border shrink-0 ${
             isSettingOpen
               ? 'text-cyan-700 bg-cyan-500/20 border-cyan-500/40 dark:text-cyan-300 dark:bg-white/10 dark:border-white/20'
               : hasUpdateAvailable
@@ -268,7 +276,7 @@ export const MainBar: React.FC<MainBarProps> = ({
               : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-white/5 border-transparent'
           }`}
         >
-          <Settings2 className="w-3.5 h-3.5" />
+          <Settings className="w-4 h-4" />
           {hasUpdateAvailable && (
             <span className="pointer-events-none absolute -top-0.5 -right-0.5 flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />

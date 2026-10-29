@@ -115,7 +115,7 @@ Feature: Quy trình Cấp quyền Trợ năng trên macOS
 
 ---
 
-### Kịch bản 6: Kiểm Định Ký Số Bundle macOS (Deep Ad-hoc Code Signing Verification)
+### Kịch bản 6: Kiểm định identity bundle macOS và quyền qua update
 ```gherkin
 Feature: Tính hợp lệ của Chữ ký Số Bundle ứng dụng macOS
   Scenario: Xác thực Bundle VXClick.app sau khi build release
@@ -123,7 +123,9 @@ Feature: Tính hợp lệ của Chữ ký Số Bundle ứng dụng macOS
     When Chạy lệnh kiểm tra chữ ký: "codesign --verify --deep --strict --verbose=4 VXClick.app"
     Then Lệnh trả về exit code 0
     And Đầu ra xác nhận "valid on disk" và "satisfies its Designated Requirement"
-    And macOS TCC daemon không từ chối ghi nhận quyền của ứng dụng
+    And Chạy node scripts/verify_macos_identity.mjs với bundle và nhận exit code 0
+    And Requirement gắn đúng bundle ID và certificate hiện hành, không chỉ cdhash
+    And Kết quả này chỉ nghiệm thu artifact, chưa nghiệm thu runtime TCC
 ```
 
 ---
@@ -198,7 +200,7 @@ Feature: Mạch Ngắt Khẩn Cấp Failsafe Cho Auto Click
 | STT | Tình huống Biên (Edge Case) | Nguy cơ Tiềm ẩn | Cơ chế Phòng vệ & Hành vi Chuẩn của VXClick |
 | :--- | :--- | :--- | :--- |
 | **01** | Chưa cấp quyền Accessibility trên macOS | Không bắt được sự kiện chuột/phím toàn cục | Nút Rec hiển thị mờ xám (`opacity-40`), click mở `PermissionModal` 3 bước và nút Khởi động lại 1-chạm. |
-| **02** | Bundle macOS ký ad-hoc (`--sign -`) bị đổi `cdhash` mỗi lần build lại | TCC không ghi nhận toggle dù user đã bật trong Settings hoặc mất quyền sau update | Bắt buộc ký số qua Certificate-bound Designated Requirement (`scripts/build_signed_macos.mjs` với identity Keychain) để DR gắn với certificate leaf cố định, bảo đảm quyền TCC vĩnh viễn qua mọi bản build. |
+| **02** | Bundle macOS ký ad-hoc (`--sign -`) bị đổi `cdhash` mỗi lần build lại | TCC không ghi nhận toggle dù user đã bật trong Settings hoặc mất quyền sau update | Bắt buộc ký số qua Certificate-bound Designated Requirement (`scripts/build_signed_macos.mjs` với identity Keychain) để DR gắn với certificate leaf cố định, không dùng ad-hoc cho gói đem cài; cần QA N → N+1 để xác minh giữ quyền, không cam kết vĩnh viễn. |
 | **03** | Tổ hợp phím tắt bị xung đột với phần mềm văn phòng (`Cmd+Opt+1/2`) | Nhảy heading trong Word/Docs/Notion, mở tool trong Photoshop/Figma | Chuẩn hóa bộ phím tắt Hyper 3-modifier: `⌥⇧⌘R` (Rec) và `⌥⇧⌘P` (Play) độc bản, không trùng bất kỳ app nào. |
 | **04** | Nhấn phím `ESC` trong khi đang Record thao tác | Nuốt mất phím ESC của ứng dụng người dùng đang thao tác | Phím `ESC` **chỉ được lắng nghe khi đang ở trạng thái PLAYING** để làm mạch ngắt khẩn cấp; khi RECORDING phím ESC được ghi lại như phím thường. |
 | **05** | Chuột gaming có Polling Rate cực cao (1000Hz - 8000Hz) | Làm nghẽn bộ nhớ với hàng chục vạn sự kiện `MouseMove` | Hàng đợi giới hạn Bounded Queue (10k slots); tự động nén gộp `MouseMove`, bảo toàn 100% sự kiện click và phím. |

@@ -56,7 +56,7 @@ Mục tiêu: Làm nổi bật tính trực quan, tốc độ phản hồi tức 
 
 ---
 
-### Màn 4: Khám Phá Nút Pin, About & Ủng Hộ Tác Giả Chuẩn zTools (30 Giây)
+### Màn 4: Khám Phá Nút Pin, About & Ủng Hộ Tác Giả Chuẩn VXUtilities (30 Giây)
 * **Thao tác biểu diễn:**
   1. Nhấp 1-chạm vào nút **📌 Pin** trên thanh chính: Nút sáng màu xanh Sky (`text-sky-400`), biểu diễn kéo thanh công cụ nổi đè lên các cửa sổ khác nhau để chứng minh cửa sổ luôn ghim nổi.
   2. Bấm vào mục **About** trong Setting: Cửa sổ phụ mở ra hiển thị thông tin phiên bản v1.0, tác giả Bùi Việt Linh, phím tắt chuẩn hóa `⌥⇧⌘R` / `⌥⇧⌘P` và nền tảng công nghệ Rust + Tauri v2.

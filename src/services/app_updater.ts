@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { isTauri } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
@@ -10,8 +10,11 @@ export const appVersion = packageInfo.version;
 
 const controller = createUpdateController({
   enabled: isTauri() && !import.meta.env.DEV && getCurrentWindow().label === 'main',
+  currentVersion: appVersion,
   check,
   relaunch,
+  beforeInstall: async () => { await invoke('prepare_app_update'); },
+  installFailed: async () => { await invoke('cancel_app_update'); },
 });
 
 export const {

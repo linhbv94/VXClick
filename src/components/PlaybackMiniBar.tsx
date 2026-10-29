@@ -57,7 +57,7 @@ export const PlaybackMiniBar: React.FC<PlaybackMiniBarProps> = ({
         {stoppedNotice.isEsc && (
           <span
             className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono font-bold text-[9px] border border-slate-300 dark:border-slate-700 shrink-0"
-            title="Được dừng bởi phím ESC"
+            title={t('esc_stopped_badge_title', language)}
           >
             ESC
           </span>
@@ -105,7 +105,7 @@ export const PlaybackMiniBar: React.FC<PlaybackMiniBarProps> = ({
                 type="button"
                 onClick={onStop}
                 className="px-1 py-0.2 rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-rose-500 dark:text-rose-400 font-mono font-bold text-[9.5px] border border-slate-300 dark:border-slate-700 shadow-2xs transition-colors cursor-pointer"
-                title="Nhấn để dừng auto click"
+                title={t('stop_autoclick_btn_title', language)}
               >
                 ESC
               </button>
@@ -209,7 +209,7 @@ export const PlaybackMiniBar: React.FC<PlaybackMiniBarProps> = ({
               type="button"
               onClick={onStop}
               className="px-1 py-0.2 rounded bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-rose-500 dark:text-rose-400 font-mono font-bold text-[9.5px] border border-slate-300 dark:border-slate-700 shadow-2xs transition-colors cursor-pointer"
-              title="Nhấn để dừng phát lại"
+              title={t('stop_playback_btn_title', language)}
             >
               ESC
             </button>
