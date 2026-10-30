@@ -1,6 +1,6 @@
 {
   "name": "vxclick",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "VXClick — Ultra-compact Macro Recorder & Automation Engine",
   "main": "index.js",
   "type": "module",
@@ -31,6 +31,6 @@
     "@vitejs/plugin-react": "^6.1.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vite": "^8.3.2"
+    "vite": "^8.3.5"
   }
 }

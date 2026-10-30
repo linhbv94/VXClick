@@ -1,6 +1,6 @@
 [package]
 name = "vxclick"
-version = "1.0.6"
+version = "1.0.7"
 description = "VXClick — Ultra-compact Macro Recorder & Automation Engine"
 authors = ["vic"]
 edition = "2021"
